@@ -1,0 +1,156 @@
+Version 0.01:
+- Initial Release
+
+Version 0.02:
+- Added Min/Max darkness cutoff settings for halftone raster images.
+- Fixed bug that could cause raster engraving to start engraving the wrong direction.
+- Fixed error messages and added better error messages.
+- Removed dependency on Numpy.
+
+Version 0.03:
+- Added more descriptive test to "No Backend Error" to indicate libUSB is not installed
+- Removed debugging code that could have resulted in the head moving 1" away from raster image.
+- Updated Raster test pattern SVG
+
+Version 0.04:
+- Improvements to DXF import to prevent import failures
+- DXF import now detects blue lines and designates them as engraving lines.
+- DXF import looks for layers that have the text "engrave" in the name and designates items on the layer as engraving lines.
+- DXF import now detects the units in the file.  If no units are specified the user is prompted to select the correct units. 
+- Stop button now works during all phases of engraving preparation
+- Status updates more during engraving preparation and engraving process
+- Stop button now pauses job with the option to resume or terminate the job.
+- Added error on detection of color coded text in SVG files.
+- Deleted Min/Max darkness cutoff settings for halftone raster images.
+- Added Levels settings utilizing a Bezier curve to control the levels of gray-scale images
+- Changed scan-line step input to always be in inches. (Raster settings are in inches/dpi now)
+
+Version 0.05:
+- Added option to support homing in the upper right corner (instead of the upper left corner) for some 50W machines
+- Changed the final move after vector engrave and vector cutting to be a rapid move to the starting position (was at working speed move).
+- Updated code to support more easily running on Mac computers.  Instructions added in the src zip file for getting started on Mac.
+- Added code to eliminate the requirement for the PIL/Pillow _imaging C module.
+- Started updating for compatibility with Python 3 (this is a low priority work in progress)
+
+Version 0.06:
+- Added code to DXF class to fix bad knot data in splines.
+- Added better status messages during image processing
+- Changed half toning to PIL/PILLOW half toning (faster)
+- Added better error message for Memory Error which previously resulted in a blank message box.
+- Added a 64bit executable to the list of downloads to address memory issued with 32bi application
+
+Version 0.07:
+- Fixed "maximum recursion depth exceeded in cmp" error when engraving/cutting.
+- Adjusted code for better memory management when generating data for the laser cutter.
+
+Version 0.08:
+- Fixed X-axis rapid motion bug that resulted in a engraving/cutting offset after some .003 inch rapid motions.
+- Instructions added in the src zip file for getting setup on Linux (README_Linux.txt).
+- Added setting for B1 boards Not enabled yet still need to be tested
+
+Version 0.09:
+- Adjusted DXF import to avoid DXF loading fail due to rounding error during calculations.
+
+Version 0.10:
+- Added support for SVG "polyline" and "polygon" objects 
+- Added code to automatically convert text to paths when red/blue vector text outlines are found.
+- Hidden layers now remain hidden.
+
+Version 0.11:
+- Added support for reading g-code.
+- Enabled option for controller board version B1
+- Fixed a bug that resulted in bad design scaling if one of the feed rates were not entered correctly when changing units.
+- Added support for SVG "Line" objects
+
+Version 0.12:
+- Added advanced options pane
+- Added multi-pass engraving and cutting
+- Added Mirror option
+- Added "Use Input CSYS" option to force K40 Whisperer to use the coordinate system from the input design (the default is to use the upper left corner of the design).
+- Added option to disable homing the laser cutter upon initialization.
+- Added option to disable preprocessing of CRC data.  Un-selecting the "Preprocess CRC Data" option results in the CRC data being generated on the fly while data is being sent to the laser.
+- Added option in Rester Settings to force engraving from the bottom of the raster image to the top.  Sometimes this is useful to prevent smoke from spoiling the engraved image.
+- Changed the communication with the laser cutter to include error detection/correction during transmission of data.
+- Fixed bug that resulted in the laser area value being removed during a change in units
+
+Version 0.13:
+- Fixed g-code processing so that it does not ignore spindle inputs. Now works with raster input from LaserWeb4
+- Fixed bug that could result in "'update_gui' is not defined" error.
+
+Version 0.14:
+- Fixed bug that resulted in two passes on some vector cut and vector engrave paths
+- Changed some error messages to be less confusing.
+
+Version 0.15:
+- Fixed DXF import so it recognizes colors assigned at the layer level
+- Improved DXF warning messages.  Identical messages are now counted and to displayed in one line.
+- Added support for the remaining board type supported by LaserDRW
+
+Version 0.16:
+- Added support for CSS style data in SVG files (some version of CorelDraw use this formating for SVG files)
+- Fixed divide by zero error for some DXF files
+- Fixed "zip" error for broken SVG files (now ignores the error)
+- Added rough time estimates for engraving/cutting times
+- Can now move design around while keeping the laser head at any corner or at the center of the design. (It will move back to upper left when laser starts.)
+- Added display of the current design file name in the main window title bar.
+- Now accepts SVG 'style' data that is not in the style attribute.
+
+Version 0.17:
+- Added ability to set scale factor values for the X and Y axes to fine tune output.
+- Added rotate option in the advanced settings to rotate designs 90 degrees
+- Fixed SVG input for rectangles that had radii specified that were larger than possible given the rectangle size.
+- Fixed SVG import of files with mixed CSS data and style data
+- Fixed error that prevented G-Code from running in Version 0.16
+- Fixed bug that could cause program to enter infinite loop after lost connection with laser
+- Made a slightly better error message for when an operation is attempted and the laser has not been initialized.
+
+Version 0.18:
+- Fixed import of polygons and polylines items in SVG files without the customary commas
+- Fixed bug that caused moving to the corners to not work for SVG files if the "Use Input CSYS" was selected for DXF files.
+
+Version 0.19:
+- Fixed SVG import error for SVG files with extra spaces in point definitions
+
+Version 0.20:
+- Fixed bug that resulted in 45 degree angles (and other shapes not straight lines) being cut faster than horizontal and vertical lines.
+- Added keyboard shortcuts for some main window functions
+- Fixed divide by zero error when running g-code with very slow feed rates
+- Added support for hidden layers in DXF files
+- Improved interpretation of some DXF files
+- Added ability to save and run EGV files.  Can run EGV files made by LaserDRW and generate files that can be run from LaserDRW.
+- Changed behavior after number of timeouts is exceeded during a design run.  K40 Whisperer will continue to try running the job until the user stops it.  Previously and error window would pop up and the job would be terminated without user intervention.  During pre-run moves the error window will still pop up.
+- Added logic to wait for the laser to finish running a job before the interface becomes active again.
+
+Version 0.21:
+- Updated build scripts to eliminate errors on some Windows computers.
+- Changed default setting so that halftone/dithering is turned on.
+- Fixed bug that generated error sometimes when opening a design is canceled from the file select dialog.
+
+Version 0.22:
+- Fixed DXF import so that working with DXF files will be faster.
+- Added link to the new manual web page in the Help menu
+- Updated code to work with Python 3 (Still works with Python 2.7)
+- Number of timeouts setting not controls how many timeouts trigger a laser disconnected message at the end of engraving.
+- Added Python version information to the Help info window
+
+Version 0.23:
+- Fixed DXF import for a specific subset of DXF files that use multiple layers designations for a single feature (array commands?).
+
+Version 0.24:
+- Fixed handling of large laser area files.  Previous version would fail to generate raster data for large areas.
+- Fixed compatibility with Python 3.7
+- Added better error reporting when raster data fails to be produced by Inkscape
+
+Version 0.25:
+- Fixed a variety of minor issues with SVG import (especially files generated with Adobe Illustrator)
+- Fixed a couple of issues with importing DXF files.
+- Added option to invert colors for raster engraving.
+
+Version 0.26:
+- Fixed option to invert colors for raster engraving.
+- Fixed more compatibility problems with Python 3
+- Added zoom to design size option
+- Added options to combine engrave operations, vector operations or all operations.
+
+Version 0.27:
+- Fixed speeds for M2 controller boards.  Higher speeds were inaccurate.
