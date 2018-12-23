@@ -2,6 +2,8 @@
 
 In this repo you can find the necessary files to build K40 Whisperer v0.27 for macOS. The files regarding Linux and Windows systems have been removed.
 
+![K40 Whisperer running on macOS](https://github.com/rsre/K40-Whisperer-macOS/blob/master/K40-Whisperer-running-on-macOS.png "K40 Whisperer")
+
 ## Build instructions
 ```bash
 pip install -r requirements.txt
