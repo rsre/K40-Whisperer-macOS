@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from distutils.core import setup
-import py2app
 
 APP = ['k40_whisperer.py']
 APP_NAME = 'K40 Whisperer'
