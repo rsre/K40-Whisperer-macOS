@@ -17,7 +17,7 @@ You'll also need libusb and inkscape. You can install them from homebrew.
 
 ```bash
 brew install libusb
-brew install inkscape
+brew cask install inkscape
 ```
 
 ## Known problems
