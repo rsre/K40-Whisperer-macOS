@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-
-from distutils.core import setup
+from setuptools import setup
 
 APP = ['k40_whisperer.py']
 APP_NAME = 'K40 Whisperer'
