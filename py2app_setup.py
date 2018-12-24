@@ -3,7 +3,7 @@ from setuptools import setup
 
 APP = ['k40_whisperer.py']
 APP_NAME = 'K40 Whisperer'
-DATA_FILES = ['right.png','left.png','up.png','down.png','UL.png','UR.png','LR.png','LL.png','CC.png','emblem','emblem64']
+DATA_FILES = ['right.png','left.png','up.png','down.png','UL.png','UR.png','LR.png','LL.png','CC.png']
 OPTIONS = {
 	'iconfile': 'scorchworks.icns',
 	'includes': ['lxml.etree', 'lxml._elementpath', 'gzip'],
