@@ -2,7 +2,7 @@
 '''
 This script reads/writes egv format
 
-Copyright (C) 2018 Scorch www.scorchworks.com
+Copyright (C) 2017-2019 Scorch www.scorchworks.com
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ import os
 from shutil import copyfile
 from math import *
 from interpolate import interpolate
+from time import time
+from LaserSpeed import LaserSpeed
 
 ##############################################################################
 class egv:
@@ -238,327 +240,15 @@ class egv:
                 raise Exception("egv.py: Error delta =%f" %(error))
 
 
-    def speed_code(self,Feed,B,M,bumps=None):
-        bval = 1
-        V  = B-M/float(Feed)
-        C1 = floor(V)
-        C2 = floor((V-C1)*255.0)
-        
-        if (bumps!=None):
-            for b in bumps:
-                if Feed >= b:
-                    bval=bval+1
-            if bval == 3:
-                C1=C1-2
-            elif bval == 4:
-                C1=C1-4
-        s_code = "V%03d%03d%d" %(C1,C2,bval)
-        #s_code = "V%03d %03d %d" %(C1,C2,1)
-        return s_code
-                    
-    
     def make_speed(self,Feed=None,board_name="LASER-M2",Raster_step=0):
-        speed=[]
-        append_code = ""
-        #################################################################
-        if board_name=="LASER-M2":
-            if Feed < .4:
-                B = 16777471.974
-                M = 100.211
-                append_code = "C"
-            elif Feed < 7:
-                B = 255.97
-                M = 100.21
-                append_code = "C"
-            else:
-                B = 236
-                M = 1202.5
-
-            # The 7th digit changes at these "bump" speeds I am not sure what significance
-            # this digit has but I have adjusted the speed codes to mimic the
-            # 7th digit which helps at higher speeds.  (It might have to do with acceleration,
-            # overshoot or both.)
-            if Raster_step==0:
-                bumps = [30 ,61 ,127] # Vector
-            else:
-                bumps = [30 ,130,325] # Raster
-
-            Scode = self.speed_code(Feed,B,M,bumps)
-            if Raster_step==0:
-                diag_linterp = self.make_diagonal_speed_interpolator(board_name)
-                if Feed <= 240.0:
-                    C4 = "%03d" %( floor(min(Feed/2.0+1,128)))
-                    C5 = "%06d" %( int(round(diag_linterp[Feed/2.0],0)) )
-                else:
-                    C4 = "000"
-                    C5 = "000000"
-                #speed_text = "C%s000000000" %(Scode)
-                speed_text = "C%s%s%s" %(Scode,C4,C5)
-                #speed_text = "C%s %s %s" %(Scode,C4,C5)
-            else:
-                speed_text =  "%sG%03d" %(Scode,abs(Raster_step))
-            speed_text = speed_text + append_code
-            
-        ################################################################# 
-        elif board_name=="LASER-M1":
-            if Feed <= 5:
-                M = 1202.531
-                B = 16777452.003
-            else:
-                M = 1202.562
-                B = 236.007
-            Scode = self.speed_code(Feed,B,M)
-            if Raster_step==0:
-                speed_text = "C%s000000000" %(Scode)
-            else:
-                speed_text =  "%sG%03d" %(Scode,abs(Raster_step))
-            speed_text = speed_text + append_code
-            
-        #################################################################
-        elif board_name=="LASER-M":
-            if Feed <= 5:
-                M = 1202.531
-                B = 16777452.003
-            else:
-                M = 1202.558
-                B = 236.006
-            Scode = self.speed_code(Feed,B,M)
-            if Raster_step==0:
-                speed_text = "C%s" %(Scode)
-            else:
-                speed_text =  "%sG%03d" %(Scode,abs(Raster_step))
-                
-        #################################################################
-        elif board_name=="LASER-B2":
-            if Feed <= .7:
-                M = 200.422
-                B = 16777468.941
-                append_code = "C"
-            elif Feed <= 6:
-                M = 200.423
-                B = 252.942
-                append_code = "C"
-            elif Feed <= 9:
-                M = 2405.109
-                B = 16777468.947
-            else:
-                M = 2405.008
-                B = 252.944
-            Scode = self.speed_code(Feed,B,M)
-            if Raster_step==0:
-                speed_text = "C%s000000000" %(Scode)
-            else:
-                speed_text = "%sG%03d" %(Scode,abs(Raster_step))
-            speed_text = speed_text + append_code
-
-        #################################################################
-        elif board_name=="LASER-B1":
-            if Feed <= .7:
-                M = 198.438
-                B = 16777468.940
-            else:
-                M = 198.437
-                B = 252.939
-            Scode = self.speed_code(Feed,B,M)
-            if Raster_step==0:
-                speed_text = "C%s000000000" %(Scode)
-            else:
-                speed_text = "%sG%03d" %(Scode,abs(Raster_step))
-                
-        #################################################################
-        elif board_name=="LASER-B" or board_name=="LASER-A":
-            if Feed <= .7:
-                M = 198.438
-                B = 16777468.940               
-            else:
-                M = 198.437
-                B = 252.940
-            Scode = self.speed_code(Feed,B,M)
-            if Raster_step==0:
-                speed_text = "C%s" %(Scode)
-            else:
-                speed_text = "%sG%03d" %(Scode,abs(Raster_step))
-
-        #################################################################
-        else:
-            raise Exception("Unknown Board Designation: %s" %(board_name))
+        board_code = board_name.split('-')[1]
+        speed_text = LaserSpeed.get_code_from_speed(Feed, abs(Raster_step), board=board_code)
         
+        speed=[]
         for c in speed_text:
             speed.append(ord(c))
         return speed
 
-
-    def make_diagonal_speed_interpolator(self,board_name):
-        # I have not been able to figure out the relationship between the speeds
-        # in the first column and the codes in the second columns below.
-        # these codes somehow ensure the speeds on the diagonal are the same horizontal
-        # and vertical moves.  For now we will just use tables and interpolate as needed.
-        vals = []
-        self.diag_linterp = None
-        #################################################################
-        if board_name=="LASER-M2":
-            vals = [
-            [ 0.010 , 2617140 ],
-            [ 0.050 , 523130 ],
-            [ 0.100 , 261193 ],
-            [ 0.150 , 174129 ],
-            [ 0.200 , 130224 ],
-            [ 0.300 , 87064 ],
-            [ 0.400 , 65112 ],
-            [ 0.500 , 52089 ],
-            [ 0.600 , 43160 ],
-            [ 0.700 , 37101 ],
-            [ 0.800 , 32184 ],
-            [ 0.900 , 29021 ],
-            [ 0.990 , 26112 ],
-            [ 1.000 , 13022 ],
-            [ 1.500 , 8185 ],
-            [ 2.000 , 4092 ],
-            [ 3.000 , 2046 ],
-            [ 3.500 , 1222 ],
-            [ 4.000 , 1079 ],
-            [ 4.500 , 1041 ],
-            [ 4.990 , 1012 ],
-            [ 5.000 , 223 ],
-            [ 6.000 , 159 ],
-            [ 6.990 , 136 ],
-            [ 7.000 , 5155 ],
-            [ 8.000 , 4092 ],
-            [ 9.000 , 3125 ],
-            [ 10.000 , 2219 ],
-            [ 12.000 , 2003 ],
-            [ 12.080 , 2000 ],
-            [ 12.090 , 1255 ],
-            [ 12.500 , 1238 ],
-            [ 13.000 , 1185 ],
-            [ 15.000 , 1079 ],
-            [ 17.000 , 1006 ],
-            [ 17.450 , 1000 ],
-            [ 17.460 , 255 ],
-            [ 18.000 , 235 ],
-            [ 19.000 , 211 ],
-            [ 20.000 , 191 ],
-            [ 25.000 , 123 ],
-            [ 30.000 , 86 ],
-            [ 40.000 , 49 ],
-            [ 50.000 , 31 ],
-            [ 60.000 , 21 ],
-            [ 70.000 , 16 ],
-            [ 80.000 , 12 ],
-            [ 90.000 ,  9 ],
-            [ 100.000 , 7 ],
-            [ 120.000 , 5 ],
-            [ 150.000 , 4 ],
-            [ 200.000 , 3 ],
-            [ 220.000 , 2 ],
-            [ 230.000 , 2 ],
-            [ 240.000 , 2 ],
-            [ 241.000 , 0 ]
-            ]
-        ################################################################# 
-        elif board_name=="LASER-M1":
-            vals = [
-            [ 0.100 , 3141014 ],
-            [ 0.200 , 1570135 ],
-            [ 0.300 , 1047004 ],
-            [ 0.400 , 785067 ],
-            [ 0.500 , 628054 ],
-            [ 0.600 , 523130 ],
-            [ 0.700 , 448185 ],
-            [ 0.800 , 392161 ],
-            [ 0.900 , 349001 ],
-            [ 1.000 , 157013 ],
-            [ 2.000 , 52089 ],
-            [ 3.000 , 26044 ],
-            [ 4.000 , 15180 ],
-            [ 5.000 , 10120 ],
-            [ 6.000 , 7122 ],
-            [ 7.000 , 5155 ],
-            [ 8.000 , 4092 ],
-            [ 9.000 , 3125 ],
-            [ 10.000 , 2219 ],
-            [ 20.000 , 191 ],
-            [ 50.000 , 31 ],
-            [ 70.000 , 16 ],
-            [ 100.000 , 7 ],
-            [ 150.000 , 4 ],
-            [ 200.000 , 3 ]
-            ]
-        #################################################################
-        elif board_name=="LASER-M":
-            # LASER-M does not have this type of speed code.
-            pass
-        #################################################################
-        elif board_name=="LASER-B2":
-            vals = [
-            [ 0.100 , 523 ],
-            [ 0.200 , 261 ],
-            [ 0.300 , 174 ],
-            [ 0.400 , 130 ],
-            [ 0.500 , 104 ],
-            [ 0.600 , 87 ],
-            [ 0.700 , 74 ],
-            [ 0.800 , 65112 ],
-            [ 0.900 , 58043 ],
-            [ 1.000 , 26044 ],
-            [ 2.000 , 8185 ],
-            [ 3.000 , 4092 ],
-            [ 4.000 , 2158 ],
-            [ 5.000 , 1190 ],
-            [ 6.000 , 1063 ], 
-            [ 7.000 , 11055 ],
-            [ 8.000 , 8185 ],
-            [ 9.000 , 6250 ],
-            [ 10.000 , 5182 ],
-            [ 15.000 , 2158 ],
-            [ 20.000 , 1126 ],
-            [ 30.000 , 172 ],
-            [ 50.000 , 63 ],
-            [ 100.000 , 15 ],
-            [ 150.000 , 8 ],
-            [ 200.000 , 6 ]
-            ]
-        #################################################################
-        elif board_name=="LASER-B1":
-            vals = [
-            [ 0.100 , 518083 ],
-            [ 0.200 , 259041 ],
-            [ 0.300 , 172198 ],
-            [ 0.400 , 129148 ],
-            [ 0.500 , 103170 ],
-            [ 0.600 , 86099 ],
-            [ 0.700 , 74012 ],
-            [ 0.800 , 64202 ],
-            [ 0.900 , 57151 ],
-            [ 1.000 , 25234 ],
-            [ 2.000 , 8163 ],
-            [ 5.000 , 1186 ],
-            [ 10.000 , 120 ],
-            [ 20.000 , 31 ],
-            [ 30.000 , 14 ],
-            [ 40.000 , 8 ],
-            [ 50.000 , 5 ],
-            [ 70.000 , 2 ],
-            [ 90.000 , 1 ],
-            [ 100.000 , 1 ],
-            [ 190.000 , 0 ],
-            [ 199.000 , 0 ],
-            [ 200.000 , 0 ]
-            ]
-        #################################################################
-        elif board_name=="LASER-B" or board_name=="LASER-A":
-            # LASER-A and LASER-B do not have this type of speed code.
-            pass
-            
-        if vals != []:
-            xvals=[]
-            yvals=[]
-            for i in range(len(vals)):
-                xvals.append(vals[i][0])
-                yvals.append(vals[i][1])
-            return interpolate(xvals,yvals)
-        else:
-            return None
 
     def make_move_data(self,dxmils,dymils):
         if (abs(dxmils)+abs(dymils)) > 0:
@@ -594,8 +284,9 @@ class egv:
                             update_gui=None,
                             stop_calc=None,
                             FlipXoffset=0,
-                            Slow_Rapids=False):
-
+                            Rapid_Feed_Rate=0):
+        #print("make_egv_data",Rapid_Feed_Rate,len(ecoords_in))
+        #print("Rapid_Feed_Rate=",Rapid_Feed_Rate)
         ########################################################
         if stop_calc == None:
             stop_calc=[]
@@ -621,13 +312,17 @@ class egv:
             
         speed = self.make_speed(Feed,board_name=board_name,Raster_step=Raster_step)
         
-        #self.write(ord("I"))
-        for code in speed:
-            self.write(code)
+        ##self.write(ord("I"))
+        #for code in speed:
+        #    self.write(code)
         
         if Raster_step==0:
+            #self.write(ord("I"))
+            for code in speed:
+                self.write(code)
+
             lastx,lasty,last_loop = self.ecoord_adj(ecoords_in[0],scale,FlipXoffset)
-            if not Slow_Rapids:
+            if not Rapid_Feed_Rate:
                 self.make_dir_dist(lastx-startX,lasty-startY)
             self.flush(laser_on=False)
             self.write(ord("N"))
@@ -640,14 +335,17 @@ class egv:
             ###########################################################
             laser   = False
             
-            if Slow_Rapids:
-                self.rapid_move_slow(lastx-startX,lasty-startY)
-            
+            if Rapid_Feed_Rate:
+                self.rapid_move_slow(lastx-startX,lasty-startY,Rapid_Feed_Rate,Feed,board_name)
+            timestamp=0
             for i in range(1,len(ecoords_in)):
                 e0,e1,e2                = self.ecoord_adj(ecoords_in[i]  ,scale,FlipXoffset)
-                update_gui("Generating EGV Data: %.1f%%" %(100.0*float(i)/float(len(ecoords_in))))
-                if stop_calc[0]==True:
-                    raise Exception("Action Stopped by User.")
+                stamp=int(3*time()) #update every 1/3 of a second
+                if (stamp != timestamp):
+                    timestamp=stamp #interlock        
+                    update_gui("Generating EGV Data: %.1f%%" %(100.0*float(i)/float(len(ecoords_in))))
+                    if stop_calc[0]==True:
+                        raise Exception("Action Stopped by User.")
             
                 if ( e2  == last_loop) and (not laser):
                     laser = True
@@ -668,8 +366,8 @@ class egv:
                                 self.change_speed(Feed,board_name,laser_on=Spindle)
                         self.make_cut_line(dx,dy,Spindle)
                     else:
-                        if ((abs(dx) < min_rapid) and (abs(dy) < min_rapid)):
-                            self.rapid_move_slow(dx,dy)
+                        if ((abs(dx) < min_rapid) and (abs(dy) < min_rapid)) or Rapid_Feed_Rate:
+                            self.rapid_move_slow(dx,dy,Rapid_Feed_Rate,Feed,board_name)
                         else:
                             self.rapid_move_fast(dx,dy)
                         
@@ -682,8 +380,8 @@ class egv:
                 
             dx = startX-lastx
             dy = startY-lasty
-            if ((abs(dx) < min_rapid) and (abs(dy) < min_rapid)) or Slow_Rapids:
-                self.rapid_move_slow(dx,dy)
+            if ((abs(dx) < min_rapid) and (abs(dy) < min_rapid)) or Rapid_Feed_Rate:
+                self.rapid_move_slow(dx,dy,Rapid_Feed_Rate,Feed,board_name)
             else:
                 self.rapid_move_fast(dx,dy)
 
@@ -698,9 +396,12 @@ class egv:
                 irange = range(len(ecoords_in))
             else:
                 irange = range(len(ecoords_in)-1,-1,-1)
-                
+            timestamp=0
             for i in irange:
-                if i%1000 == 0:
+                #if i%1000 == 0:
+                stamp=int(3*time()) #update every 1/3 of a second
+                if (stamp != timestamp):
+                    timestamp=stamp #interlock
                     update_gui("Preprocessing Raster Data: %.1f%%" %(100.0*float(i)/float(len(ecoords_in))))
                 y    = ecoords_in[i][1]
                 if y != scanline_y:
@@ -711,12 +412,23 @@ class egv:
                         scanline[-1].insert(0,ecoords_in[i])
                     else:
                         scanline[-1].append(ecoords_in[i])
+            update_gui("Raster Data Ready")
             ###################################################
             lastx,lasty,last_loop = self.ecoord_adj(scanline[0][0],scale,FlipXoffset)
             
             DXstart = lastx-startX
             DYstart = lasty-startY
-            self.make_dir_dist(DXstart,DYstart)
+
+            if Rapid_Feed_Rate:
+                self.make_egv_rapid(DXstart,DYstart,Rapid_Feed_Rate,board_name,finish=False)
+
+            ##self.write(ord("I"))
+            for code in speed:
+                self.write(code)
+
+            if not Rapid_Feed_Rate:
+                self.make_dir_dist(DXstart,DYstart)
+
             #insert "NRB"
             self.flush(laser_on=False)
             self.write(ord("N"))
@@ -733,14 +445,18 @@ class egv:
 
             sign = -1
             cnt = 1
+            timestamp=0
             for scan_raw in scanline:
                 scan = []
                 for point in scan_raw:
                     e0,e1,e2 = self.ecoord_adj(point,scale,FlipXoffset)
                     scan.append([e0,e1,e2])
-                update_gui("Generating EGV Data: %.1f%%" %(100.0*float(cnt)/float(len(scanline))))
-                if stop_calc[0]==True:
-                    raise Exception("Action Stopped by User.")
+                stamp=int(3*time()) #update every 1/3 of a second
+                if (stamp != timestamp):
+                    timestamp=stamp #interlock
+                    update_gui("Generating EGV Data: %.1f%%" %(100.0*float(cnt)/float(len(scanline))))
+                    if stop_calc[0]==True:
+                        raise Exception("Action Stopped by User.")
                 cnt = cnt+1
                 ######################################
                 ## Flip direction and reset loop    ##
@@ -757,7 +473,8 @@ class egv:
                 ######################################
                 ## Make Rapid move if needed        ##
                 ######################################
-                if abs(dy-Raster_step) != 0 and not Rapid_flag:
+                if abs(dy-Raster_step) != 0 and not Rapid_flag: 
+                    
                     if dxr*sign < 0:
                         yoffset = -Raster_step*3
                     else:
@@ -765,11 +482,18 @@ class egv:
                         
                     if (dy+yoffset)*(abs(yoffset)/yoffset) < 0:
                         self.flush(laser_on=False)
-                        self.write(ord("N"))
-                        self.make_dir_dist(0,dy+yoffset)
-                        self.flush(laser_on=False)
-                        self.write(ord("S"))
-                        self.write(ord("E"))
+
+                        if not Rapid_Feed_Rate:
+                            self.write(ord("N"))
+                            self.make_dir_dist(0,dy+yoffset)
+                            self.flush(laser_on=False)
+                            self.write(ord("S"))
+                            self.write(ord("E"))
+                        else:
+                            DX=0
+                            DY=dy+yoffset
+                            self.raster_rapid_move_slow(DX,DY,Raster_step,Rapid_Feed_Rate,Feed,board_name)
+
                         Rapid_flag=True
                     else:
                         adj_steps = int(dy/Raster_step)
@@ -785,8 +509,9 @@ class egv:
                             else:
                                 xr = scan[-1][0]
                             dxr = xr - lastx
-
                     lasty = y
+
+                        
                 ######################################
                 if sign == 1:
                     rng = range(0,len(scan),1)
@@ -830,29 +555,89 @@ class egv:
                 lasty = lasty + Raster_step
 
             self.flush(laser_on=False)
-            
-            self.write(ord("N"))
+
+
             dx_final = (startX - lastx)
             if Raster_step < 0:
                 dy_final = (startY - lasty) + Raster_step
             else:
                 dy_final = (startY - lasty) - Raster_step
-            self.make_dir_dist(dx_final,dy_final)
-            self.flush(laser_on=False)
-            self.write(ord("S"))
-            self.write(ord("E"))
+           
+            max_return_feed = 50.0
+            if not Rapid_Feed_Rate:
+                if Feed > max_return_feed:
+                    self.change_speed(max_return_feed,board_name,laser_on=False)
+                self.write(ord("N"))
+                self.make_dir_dist(dx_final,dy_final)
+                self.flush(laser_on=False)
+                self.write(ord("S"))
+                self.write(ord("E"))
+            else:
+                #if Raster_step:
+                #    self.raster_rapid_move_slow(dx_final,dy_final,Raster_step,Rapid_Feed_Rate,Rapid_Feed_Rate,board_name)
+                #else:
+                self.rapid_move_slow(dx_final,dy_final,Rapid_Feed_Rate,5,board_name)
             ###########################################################
-                        
+           
         # Append Footer
         self.flush(laser_on=False)
         self.write(ord("F"))
         self.write(ord("N"))
         self.write(ord("S"))
         self.write(ord("E"))
+        update_gui("EGV Data Complete")
         return
 
-    def rapid_move_slow(self,dx,dy):
-        self.make_dir_dist(dx,dy)
+    def make_egv_rapid(self, DX,DY,Feed = None,board_name="LASER-M2",finish=True):
+        speed = self.make_speed(Feed,board_name=board_name,Raster_step=0)
+        if finish:
+            self.write(ord("I"))
+        for code in speed:
+            self.write(code)
+        self.flush(laser_on=False)
+        self.write(ord("N"))
+        self.write(ord("R"))
+        self.write(ord("B"))
+        # Insert "S1E"
+        self.write(ord("S"))
+        self.write(ord("1"))
+        self.write(ord("E"))
+        ###########################################################
+        # Move Distance
+        self.make_cut_line(DX,DY,Spindle=0)
+        ###########################################################   
+        # Append Footer
+        self.flush(laser_on=False)
+        if finish:
+            self.write(ord("F"))
+        else:
+            self.write(ord("@"))
+        self.write(ord("N"))
+        self.write(ord("S"))
+        self.write(ord("E"))
+        return
+
+    def rapid_move_slow(self,dx,dy,Rapid_Feed_Rate,Feed,board_name):
+        if Rapid_Feed_Rate:
+            self.change_speed(Rapid_Feed_Rate,board_name,laser_on=False)
+            self.make_dir_dist(dx,dy)
+            self.change_speed(Feed,board_name,laser_on=False)
+        else:
+            self.make_dir_dist(dx,dy)
+
+    def raster_rapid_move_slow(self,DX,DY,Raster_step,Rapid_Feed_Rate,Feed,board_name):
+        tiny_step = Raster_step/abs(Raster_step)
+        self.change_speed(Rapid_Feed_Rate,board_name,laser_on=False)
+        self.make_dir_dist(DX,DY-tiny_step)
+        self.flush(laser_on=False)
+        self.change_speed(Feed,board_name,laser_on=False,Raster_step=Raster_step)
+        #Tiny Rapid
+        self.write(ord("N"))
+        self.make_dir_dist(0,tiny_step)
+        self.flush(laser_on=False)
+        self.write(ord("S"))
+        self.write(ord("E"))
+
 
     def rapid_move_fast(self,dx,dy):
         pad = 3
@@ -873,7 +658,7 @@ class egv:
         self.write(ord("E"))
 
 
-    def change_speed(self,Feed,board_name,laser_on=False):
+    def change_speed(self,Feed,board_name,laser_on=False,Raster_step=0):
         cspad = 5
         if laser_on:
             self.write(self.OFF)
@@ -885,7 +670,7 @@ class egv:
         self.write(ord("N"))
         self.write(ord("S"))
         self.write(ord("E"))
-        speed = self.make_speed(Feed,board_name)
+        speed = self.make_speed(Feed,board_name,Raster_step=Raster_step)
         #print Feed,speed
         for code in speed:
             self.write(code)

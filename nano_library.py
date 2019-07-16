@@ -2,7 +2,7 @@
 '''
 This script comunicated with the K40 Laser Cutter.
 
-Copyright (C) 2017 Scorch www.scorchworks.com
+Copyright (C) 2017-2019 Scorch www.scorchworks.com
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,8 +28,9 @@ import struct
 import os
 from shutil import copyfile
 from egv import egv
-import time
 import traceback
+from windowsinhibitor import WindowsInhibitor
+from time import time
 
 ##############################################################################
 
@@ -151,6 +152,9 @@ class K40_CLASS:
         if update_gui == None:
             update_gui = self.none_function
 
+        NoSleep = WindowsInhibitor()
+        NoSleep.inhibit()
+
         blank   = [166,0,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,166,0]
         packets = []
         packet  = blank[:]
@@ -161,27 +165,33 @@ class K40_CLASS:
                 istart = 0
             else:
                 istart = 1
-                data[-4]
             if passes > 1:
                 if j == passes-1:
                     data[-4]=ord("F")
                 else:
                     data[-4]=ord("@")
-                
+            timestamp=0   
             for i in range(istart,len_data):
                 if cnt > 31:
                     packet[-1] = self.OneWireCRC(packet[1:len(packet)-2])
+                    stamp=int(3*time()) #update every 1/3 of a second
                     if not preprocess_crc:
                         self.send_packet_w_error_checking(packet,update_gui,stop_calc)
-                        update_gui("Sending Data to Laser = %.1f%%" %(100.0*float(i)/float(len_data)))
+                        if (stamp != timestamp):
+                            timestamp=stamp #interlock
+                            update_gui("Sending Data to Laser = %.1f%%" %(100.0*float(i)/float(len_data)))
                     else:
                         packets.append(packet)
-                        update_gui("Calculating CRC data and Generate Packets: %.1f%%" %(100.0*float(i)/float(len_data)))
+                        if (stamp != timestamp):
+                            timestamp=stamp #interlock
+                            update_gui("Calculating CRC data and Generate Packets: %.1f%%" %(100.0*float(i)/float(len_data)))
                     packet = blank[:]
                     cnt = 2
                     
                     if stop_calc[0]==True:
-                        raise Exception("Action Stopped by User.")
+                        NoSleep.uninhibit()
+                        self.stop_sending_data()
+                        #raise Exception("Action Stopped by User.")
                 packet[cnt]=data[i]
                 cnt=cnt+1
         packet[-1]=self.OneWireCRC(packet[1:len(packet)-2])
@@ -189,6 +199,7 @@ class K40_CLASS:
             self.send_packet_w_error_checking(packet,update_gui,stop_calc)
         else:
             packets.append(packet)
+            update_gui("CRC data and Packets are Ready")
         packet_cnt = 0
 
         for line in packets:
@@ -199,6 +210,7 @@ class K40_CLASS:
         ##############################################################
         if wait_for_laser:
             self.wait_for_laser_to_finish(update_gui,stop_calc)
+        NoSleep.uninhibit()
 
 
     def send_packet_w_error_checking(self,line,update_gui=None,stop_calc=None):
@@ -206,9 +218,15 @@ class K40_CLASS:
         crc_cnt     = 1
         while True:
             if stop_calc[0]:
-                msg="Action Stopped by User."
-                update_gui(msg,bgcolor='red')
-                raise Exception(msg)
+                self.stop_sending_data()
+                
+            response = self.say_hello()                    
+            if response == self.BUFFER_FULL:
+                while response == self.BUFFER_FULL:
+                    response = self.say_hello()
+                    update_gui()
+                    if stop_calc[0]:
+                        self.stop_sending_data()
             try:
                 self.send_packet(line)
             except:
@@ -222,16 +240,19 @@ class K40_CLASS:
                     if not gui_active:
                         msg = "The laser cutter is not responding after %d attempts." %(timeout_cnt)
                         raise Exception(msg)
+
+                if timeout_cnt > 20:
+                   # try reconnect to laser
+                   try:
+                       self.initialize_device()
+                   except:
+                       pass
+
                 continue
             ######################################
             response = self.say_hello()
-                            
-            if response == self.BUFFER_FULL:
-                while response == self.BUFFER_FULL:
-                    response = self.say_hello()
-                break #break and move on to next packet
 
-            elif response == self.CRC_ERROR:
+            if response == self.CRC_ERROR:
                 crc_cnt=crc_cnt+1
                 if crc_cnt < self.n_timeouts:
                     msg = "Data transmission (CRC) error #%d" %(crc_cnt)               
@@ -260,16 +281,20 @@ class K40_CLASS:
                 FINISHED = True
                 break
             elif response == None:
-                msg = "The laser cutter stopped responding after sending data was complete."
-                raise Exception(msg)
+                msg = "Laser stopped responding after operation was complete."
+                update_gui(msg)
+		        #raise Exception(msg)
+                FINISHED = True
             else: #assume: response == self.OK:
                 msg = "Waiting for the laser to finish."
                 update_gui(msg)
             if stop_calc[0]:
-                msg="Action Stopped by User."
-                update_gui(msg,bgcolor='red')
-                raise Exception(msg)
+                self.stop_sending_data()
 
+
+    def stop_sending_data(self):
+        self.e_stop()
+        raise Exception("Action Stopped by User.")
 
     def send_packet(self,line):
         self.dev.write(self.write_addr,line,self.timeout)

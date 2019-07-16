@@ -2,7 +2,7 @@
 """
     K40 Whisperer
 
-    Copyright (C) <2017-2018>  <Scorch>
+    Copyright (C) <2017-2019>  <Scorch>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-version = '0.27'
+version = '0.33'
 title_text = "K40 Whisperer V"+version
 
 import sys
@@ -27,8 +27,10 @@ from nano_library import K40_CLASS
 from dxf import DXF_CLASS
 from svg_reader import SVG_READER
 from svg_reader import SVG_TEXT_EXCEPTION
+from svg_reader import SVG_PXPI_EXCEPTION
 from g_code_library import G_Code_Rip
 from interpolate import interpolate
+from ecoords import ECoord
 
 import inkex
 import simplestyle
@@ -77,6 +79,8 @@ import operator
 import webbrowser
 from PIL import Image
 from PIL import ImageOps
+from PIL import ImageFilter
+
 try:
     Image.warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 except:
@@ -89,113 +93,33 @@ except:
 
 QUIET = False
 
-class ECoord():
-    def __init__(self):
-        self.reset()
-        
-    def reset(self):
-        self.image      = None
-        self.reset_path()
+# macOS Mojave and tikinter buttons are blank
+# https://stackoverflow.com/questions/52529403/button-text-of-tkinter-not-works-in-mojave]
+# Essentially the fix is to slightly resize the window after it opens.
+macOS_button_fix_enabled = False
 
-    def reset_path(self):
-        self.ecoords    = []
-        self.len        = 0
-        self.move       = 0
-        self.sorted     = False
-        self.bounds     = (0,0,0,0)
-        self.gcode_time = 0        
+def macOS_button_fix(win):
+    def make_window_resizer(w):
+        def window_resizer():
+            a = w.winfo_geometry().split('+')[0]
+            (width, height) = a.split('x')
+            w.geometry('%dx%d' % (int(width)+1, int(height)+1))
 
-    def make_ecoords(self,coords,scale=1):
-        self.reset()
-        self.len  = 0
-        self.move = 0
-        
-        xmax, ymax = -1e10, -1e10
-        xmin, ymin =  1e10,  1e10
-        self.ecoords=[]
-        Acc=.001
-        oldx = oldy = -99990.0
-        first_stroke = True
-        loop=0
-        for line in coords:
-            XY = line
-            x1 = XY[0]*scale
-            y1 = XY[1]*scale
-            x2 = XY[2]*scale
-            y2 = XY[3]*scale
-            dxline= x2-x1
-            dyline= y2-y1
-            len_line=sqrt(dxline*dxline + dyline*dyline)
-            
-            dx = oldx - x1
-            dy = oldy - y1
-            dist   = sqrt(dx*dx + dy*dy)
-            # check and see if we need to move to a new discontinuous start point
-            if (dist > Acc) or first_stroke:
-                loop = loop+1
-                self.ecoords.append([x1,y1,loop])
-                if not first_stroke:
-                    self.move = self.move + dist
-                first_stroke = False
-                
-            self.len = self.len + len_line
-            self.ecoords.append([x2,y2,loop])
-            oldx, oldy = x2, y2
-            xmax=max(xmax,x1,x2)
-            ymax=max(ymax,y1,y2)
-            xmin=min(xmin,x1,x2)
-            ymin=min(ymin,y1,y2)
-        self.bounds = (xmin,xmax,ymin,ymax)
+        return window_resizer
 
-    def set_ecoords(self,ecoords,data_sorted=False):
-        self.ecoords = ecoords
-        self.computeEcoordsLen()
-        self.data_sorted=data_sorted
+    # The fix causes a bit of flicker on startup, so only run it for macOS >= 10.14
+    # Check for macOS >= 10.14
+    if macOS_button_fix_enabled:
+        try:
+            import platform
+            v, _, _ = platform.mac_ver()
+            v = float('.'.join(v.split('.')[:2]))
+            if v >= 10.14:
+                win.update()
+                win.after(0, make_window_resizer(win))
+        except:
+            pass
 
-    def set_image(self,PIL_image):
-        self.image = PIL_image
-
-    def computeEcoordsLen(self):
-        xmax, ymax = -1e10, -1e10
-        xmin, ymin =  1e10,  1e10
-        
-        if self.ecoords == [] : 
-            return
-        on = 0
-        move = 0
-        time = 0
-        for i in range(2,len(self.ecoords)):
-            x1 = self.ecoords[i-1][0]
-            y1 = self.ecoords[i-1][1]
-            x2 = self.ecoords[i][0]
-            y2 = self.ecoords[i][1]
-            loop      = self.ecoords[i  ][2]
-            loop_last = self.ecoords[i-1][2]
-            
-            xmax=max(xmax,x1,x2)
-            ymax=max(ymax,y1,y2)
-            xmin=min(xmin,x1,x2)
-            ymin=min(ymin,y1,y2)
-            
-            dx = x2-x1
-            dy = y2-y1
-            dist = sqrt(dx*dx + dy*dy)
-            
-            if len(self.ecoords[i]) > 3:
-                feed = self.ecoords[i][3]
-                time = time + dist/feed*60
-                
-            if loop == loop_last:
-                on   = on + dist 
-            else:
-                move = move + dist
-
-        self.bounds = (xmin,xmax,ymin,ymax)
-        self.len = on
-        self.move = move
-        self.gcode_time = time
-    
-    
 ################################################################################
 class Application(Frame):
     def __init__(self, master):
@@ -225,8 +149,7 @@ class Application(Frame):
         
     def createWidgets(self):
         self.initComplete = 0
-        self.stop=[]
-        self.stop.append(False)
+        self.stop=[True]
         
         self.k40 = None
         
@@ -244,6 +167,11 @@ class Application(Frame):
         self.master.bind('<Control-Right>', self.Move_Right)
         self.master.bind('<Control-Up>'   , self.Move_Up)
         self.master.bind('<Control-Down>' , self.Move_Down)
+
+        self.master.bind('<Alt-Control-Left>' , self.Move_Arb_Left)
+        self.master.bind('<Alt-Control-Right>', self.Move_Arb_Right)
+        self.master.bind('<Alt-Control-Up>'   , self.Move_Arb_Up)
+        self.master.bind('<Alt-Control-Down>' , self.Move_Arb_Down)
 
         self.master.bind('<Control-i>' , self.Initialize_Laser)
         self.master.bind('<Control-o>' , self.menu_File_Open_Design)
@@ -271,6 +199,8 @@ class Application(Frame):
         self.init_home    = BooleanVar()
         self.pre_pr_crc   = BooleanVar()
         self.inside_first = BooleanVar()
+        self.rotary       = BooleanVar()
+        
 
         self.ht_size    = StringVar()
         self.Reng_feed  = StringVar()
@@ -294,11 +224,23 @@ class Application(Frame):
         self.bezier_M2     = StringVar()
         self.bezier_weight = StringVar()
 
+##        self.unsharp_flag = BooleanVar()
+##        self.unsharp_r    = StringVar()
+##        self.unsharp_p    = StringVar()
+##        self.unsharp_t    = StringVar()
+##        self.unsharp_flag.set(False)
+##        self.unsharp_r.set("40")
+##        self.unsharp_p.set("350")
+##        self.unsharp_t.set("3")
+
         self.LaserXsize = StringVar()
         self.LaserYsize = StringVar()
 
         self.LaserXscale = StringVar()
         self.LaserYscale = StringVar()
+        self.LaserRscale = StringVar()
+
+        self.rapid_feed = StringVar()
 
         self.gotoX = StringVar()
         self.gotoY = StringVar()
@@ -341,6 +283,7 @@ class Application(Frame):
         self.init_home.set(1)
         self.pre_pr_crc.set(1)
         self.inside_first.set(1)
+        self.rotary.set(0)
         
         self.ht_size.set(500)
 
@@ -395,6 +338,9 @@ class Application(Frame):
         
         self.LaserXscale.set("1.000")
         self.LaserYscale.set("1.000")
+        self.LaserRscale.set("1.000")
+
+        self.rapid_feed.set("0.0")
 
         self.gotoX.set("0.0")
         self.gotoY.set("0.0")
@@ -468,6 +414,10 @@ class Application(Frame):
         self.PreviewCanvas.tag_bind('LaserTag',"<B1-Motion>"      , self.mousePan)
         self.PreviewCanvas.tag_bind('LaserTag',"<ButtonRelease-1>", self.mousePanStop)
 
+        self.PreviewCanvas.tag_bind('LaserDot',"<3>"              , self.right_mousePanStart)
+        self.PreviewCanvas.tag_bind('LaserDot',"<B3-Motion>"      , self.right_mousePan)
+        self.PreviewCanvas.tag_bind('LaserDot',"<ButtonRelease-3>", self.right_mousePanStop)
+
         # Left Column #
         self.separator1 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
         self.separator2 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
@@ -493,26 +443,26 @@ class Application(Frame):
         self.NormalColor =  self.Entry_Vcut_feed.cget('bg')
 
         # Buttons
-        self.Reng_Button  = Button(self.master,text="Raster Eng", command=self.Raster_Eng, wraplength=8)
-        self.Veng_Button  = Button(self.master,text="Vector Eng", command=self.Vector_Eng, wraplength=8)
-        self.Vcut_Button  = Button(self.master,text="Vector Cut"    , command=self.Vector_Cut, wraplength=8)
+        self.Reng_Button  = Button(self.master,text="Raster Engrave", command=self.Raster_Eng)
+        self.Veng_Button  = Button(self.master,text="Vector Engrave", command=self.Vector_Eng)
+        self.Vcut_Button  = Button(self.master,text="Vector Cut"    , command=self.Vector_Cut)
         self.Grun_Button  = Button(self.master,text="Run G-Code"    , command=self.Gcode_Cut)
 
 
-        self.Reng_Veng_Button      = Button(self.master,text="Raster and\nVector Engrave", command=self.Raster_Vector_Eng, wraplength=8)
-        self.Veng_Vcut_Button      = Button(self.master,text="Vector Engrave\nand Cut", command=self.Vector_Eng_Cut, wraplength=8)
-        self.Reng_Veng_Vcut_Button = Button(self.master,text="Raster Engrave\nVector Engrave\nand\nVector Cut", command=self.Raster_Vector_Cut, wraplength=8)
+        self.Reng_Veng_Button      = Button(self.master,text="Raster and\nVector Engrave", command=self.Raster_Vector_Eng)
+        self.Veng_Vcut_Button      = Button(self.master,text="Vector Engrave\nand Cut", command=self.Vector_Eng_Cut)
+        self.Reng_Veng_Vcut_Button = Button(self.master,text="Raster Engrave\nVector Engrave\nand\nVector Cut", command=self.Raster_Vector_Cut)
         
         self.Label_Position_Control = Label(self.master,text="Position Controls:", anchor=W)
         
         self.Initialize_Button = Button(self.master,text="Initialize Laser Cutter", command=self.Initialize_Laser)
 
-        self.Open_Button       = Button(self.master,text="Open\nDesign File",   command=self.menu_File_Open_Design, wraplength=8)
-        self.Reload_Button     = Button(self.master,text="Reload\nDesign File", command=self.menu_Reload_Design, wraplength=8)
+        self.Open_Button       = Button(self.master,text="Open\nDesign File",   command=self.menu_File_Open_Design)
+        self.Reload_Button     = Button(self.master,text="Reload\nDesign File", command=self.menu_Reload_Design)
         
-        self.Home_Button       = Button(self.master,text="Home",             command=self.Home)
+        self.Home_Button       = Button(self.master,text="Home",            command=self.Home)
         self.UnLock_Button     = Button(self.master,text="Unlock Rail",     command=self.Unlock)
-        self.Stop_Button       = Button(self.master,text="Stop",             command=self.Stop)
+        self.Stop_Button       = Button(self.master,text="Pause/Stop",      command=self.Stop)
 
         try:
             self.left_image  = self.Imaging_Free(Image.open("left.png"),bg=None)
@@ -566,7 +516,13 @@ class Application(Frame):
         self.gotoY.trace_variable("w", self.Entry_GoToY_Callback)
         
         self.Label_GoToX   = Label(self.master,text="X", anchor=CENTER )
-        self.Label_GoToY   = Label(self.master,text="Y", anchor=CENTER )
+        self.Label_GoToY = Label(self.master, text="Y", anchor=CENTER)
+        
+        # Adjust button wrap locations for macOS
+        self.Open_Button.config(wraplength=20)
+        self.Reload_Button.config(wraplength=20)
+        self.Reng_Button.config(text="Raster Eng.")
+        self.Veng_Button.config(text="Vector Eng.")
         ###########################################################################
         # End Left Column #
 
@@ -585,6 +541,8 @@ class Application(Frame):
         self.Checkbutton_Negate_adv.configure(variable=self.negate)
         self.negate.trace_variable("w", self.menu_View_Mirror_Refresh_Callback)
 
+        self.separator_adv2 = Frame(self.master, height=2, bd=1, relief=SUNKEN)  
+
         self.Label_Mirror_adv = Label(self.master,text="Mirror Design")
         self.Checkbutton_Mirror_adv = Checkbutton(self.master,text=" ", anchor=W)
         self.Checkbutton_Mirror_adv.configure(variable=self.mirror)
@@ -594,7 +552,9 @@ class Application(Frame):
         self.Checkbutton_Rotate_adv = Checkbutton(self.master,text=" ", anchor=W)
         self.Checkbutton_Rotate_adv.configure(variable=self.rotate)
         self.rotate.trace_variable("w", self.menu_View_Mirror_Refresh_Callback)
-    
+
+        self.separator_adv3 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
+        
         self.Label_inputCSYS_adv = Label(self.master,text="Use Input CSYS")
         self.Checkbutton_inputCSYS_adv = Checkbutton(self.master,text=" ", anchor=W)
         self.Checkbutton_inputCSYS_adv.configure(variable=self.inputCSYS)
@@ -604,6 +564,16 @@ class Application(Frame):
         self.Checkbutton_Inside_First_adv = Checkbutton(self.master,text=" ", anchor=W)
         self.Checkbutton_Inside_First_adv.configure(variable=self.inside_first)
         self.inside_first.trace_variable("w", self.menu_Inside_First_Callback)
+
+        self.Label_Inside_First_adv = Label(self.master,text="Cut Inside First")
+        self.Checkbutton_Inside_First_adv = Checkbutton(self.master,text=" ", anchor=W)
+        self.Checkbutton_Inside_First_adv.configure(variable=self.inside_first)
+
+        self.Label_Rotary_Enable_adv = Label(self.master,text="Use Rotary Settings")
+        self.Checkbutton_Rotary_Enable_adv = Checkbutton(self.master,text="")
+        self.Checkbutton_Rotary_Enable_adv.configure(variable=self.rotary)
+
+
 
         #####
         self.separator_comb = Frame(self.master, height=2, bd=1, relief=SUNKEN)  
@@ -695,6 +665,7 @@ class Application(Frame):
         top_View.add_separator()
         top_View.add_checkbutton(label = "Show Raster Image"  ,  variable=self.include_Reng ,command= self.menu_View_Refresh)
         if DEBUG:
+            top_View.add("command", label = "Calculate Raster Paths", command = self.menu_Calc_Raster_Paths)
             top_View.add_checkbutton(label = "Show Raster Paths" ,variable=self.include_Rpth ,command= self.menu_View_Refresh)
         top_View.add_checkbutton(label = "Show Vector Engrave",   variable=self.include_Veng ,command= self.menu_View_Refresh)
         top_View.add_checkbutton(label = "Show Vector Cut"    ,   variable=self.include_Vcut ,command= self.menu_View_Refresh)
@@ -720,6 +691,7 @@ class Application(Frame):
         top_Settings = Menu(self.menuBar, tearoff=0)
         top_Settings.add("command", label = "General Settings", command = self.GEN_Settings_Window)
         top_Settings.add("command", label = "Raster Settings",  command = self.RASTER_Settings_Window)
+        top_Settings.add("command", label = "Rotary Settings",  command = self.ROTARY_Settings_Window)
         top_Settings.add_separator()
         top_Settings.add_checkbutton(label = "Advanced Settings", variable=self.advanced ,command= self.menu_View_Refresh)
         
@@ -742,6 +714,7 @@ class Application(Frame):
             self.Open_Settings_File(config_file)
         elif ( os.path.isfile(home_config1) ):
             self.Open_Settings_File(home_config1)
+
 
         opts, args = None, None
         try:
@@ -804,15 +777,22 @@ class Application(Frame):
 
 ################################################################################
     def Write_Config_File(self, event):
+        
         config_data = self.WriteConfig()
         config_file = "k40_whisperer.txt"
         configname_full = self.HOME_DIR + "/" + config_file
 
-        win_id=self.grab_current()
+        current_name = event.widget.winfo_parent()
+        win_id = event.widget.nametowidget(current_name)
+
         if ( os.path.isfile(configname_full) ):
+            try:
+                win_id.withdraw()
+            except:
+                pass
+
             if not message_ask_ok_cancel("Replace", "Replace Exiting Configuration File?\n"+configname_full):
                 try:
-                    win_id.withdraw()
                     win_id.deiconify()
                 except:
                     pass
@@ -832,7 +812,6 @@ class Application(Frame):
         self.statusMessage.set("Configuration File Saved: %s" %(configname_full))
         self.statusbar.configure( bg = 'white' )
         try:
-            win_id.withdraw()
             win_id.deiconify()
         except:
             pass
@@ -842,7 +821,7 @@ class Application(Frame):
         global Zero
         header = []
         header.append('( K40 Whisperer Settings: '+version+' )')
-        header.append('( by Scorch - 2018 )')
+        header.append('( by Scorch - 2019 )')
         header.append("(=========================================================)")
         # BOOL
         header.append('(k40_whisperer_set include_Reng  %s )'  %( int(self.include_Reng.get())  ))
@@ -866,7 +845,8 @@ class Application(Frame):
 
         header.append('(k40_whisperer_set comb_engrave  %s )'  %( int(self.comb_engrave.get())  ))
         header.append('(k40_whisperer_set comb_vector   %s )'  %( int(self.comb_vector.get())   ))
-        header.append('(k40_whisperer_set zoom2image    %s )'  %( int(self.zoom2image.get())   ))
+        header.append('(k40_whisperer_set zoom2image    %s )'  %( int(self.zoom2image.get())    ))
+        header.append('(k40_whisperer_set rotary        %s )'  %( int(self.rotary.get())        ))
 
         # STRING.get()
         header.append('(k40_whisperer_set board_name    %s )'  %( self.board_name.get()     ))
@@ -888,13 +868,20 @@ class Application(Frame):
         header.append('(k40_whisperer_set LaserYsize    %s )'  %( self.LaserYsize.get()     ))
         header.append('(k40_whisperer_set LaserXscale   %s )'  %( self.LaserXscale.get()    ))
         header.append('(k40_whisperer_set LaserYscale   %s )'  %( self.LaserYscale.get()    ))
+        header.append('(k40_whisperer_set LaserRscale   %s )'  %( self.LaserRscale.get()    ))
+        header.append('(k40_whisperer_set rapid_feed   %s )'  %( self.rapid_feed.get()      ))
+        
         header.append('(k40_whisperer_set gotoX         %s )'  %( self.gotoX.get()          ))
         header.append('(k40_whisperer_set gotoY         %s )'  %( self.gotoY.get()          ))
 
         header.append('(k40_whisperer_set bezier_M1     %s )'  %( self.bezier_M1.get()      ))
         header.append('(k40_whisperer_set bezier_M2     %s )'  %( self.bezier_M2.get()      ))
-        
         header.append('(k40_whisperer_set bezier_weight %s )'  %( self.bezier_weight.get()  ))
+        
+##        header.append('(k40_whisperer_set unsharp_flag  %s )'  %( int(self.unsharp_flag.get())  ))
+##        header.append('(k40_whisperer_set unsharp_r     %s )'  %( self.unsharp_r.get()      ))
+##        header.append('(k40_whisperer_set unsharp_p     %s )'  %( self.unsharp_p.get()      ))
+##        header.append('(k40_whisperer_set unsharp_t     %s )'  %( self.unsharp_t.get()      ))
 
         header.append('(k40_whisperer_set t_timeout     %s )'  %( self.t_timeout.get()      ))
         header.append('(k40_whisperer_set n_timeouts    %s )'  %( self.n_timeouts.get()     ))
@@ -949,6 +936,39 @@ class Application(Frame):
         if self.Send_Rapid_Move(DXmils,DYmils):
             self.menu_View_Refresh()
 
+    def right_mousePanStart(self,event):
+        self.s_panx = event.x
+        self.s_pany = event.y
+        self.s_move_start_x = event.x
+        self.s_move_start_y = event.y
+        
+    def right_mousePan(self,event):
+        all = self.PreviewCanvas.find_all()
+        dx = event.x-self.s_panx
+        dy = event.y-self.s_pany
+
+        self.PreviewCanvas.move('LaserDot', dx, dy)
+        self.s_lastx = self.lastx + dx
+        self.s_lasty = self.lasty + dy
+        self.s_panx = event.x
+        self.s_pany = event.y
+        
+    def right_mousePanStop(self,event):
+        Xold = round(self.laserX,3)
+        Yold = round(self.laserY,3)
+        can_dx =   event.x-self.s_move_start_x
+        can_dy = -(event.y-self.s_move_start_y)
+        
+        dx = can_dx*self.PlotScale
+        dy = can_dy*self.PlotScale
+        if self.HomeUR.get():
+            dx = -dx
+            
+        DX =  round(dx*1000)
+        DY =  round(dy*1000)
+        self.Move_Arbitrary(DX,DY)
+        self.menu_View_Refresh()
+
     def LASER_Size(self):
         MINX = 0.0
         MAXY = 0.0
@@ -962,7 +982,7 @@ class Application(Frame):
         return (MAXX-MINX,MAXY-MINY)
 
 
-    def XY_in_bounds(self,dx_inches,dy_inches):
+    def XY_in_bounds(self,dx_inches,dy_inches, no_size=False):
         MINX = 0.0
         MAXY = 0.0
         if self.units.get()=="in":
@@ -972,19 +992,38 @@ class Application(Frame):
             MAXX =  float(self.LaserXsize.get())/25.4
             MINY = -float(self.LaserYsize.get())/25.4
 
-        if self.inputCSYS.get() and self.RengData.image == None:
+        if (self.inputCSYS.get() and self.RengData.image == None) or no_size:
             xmin,xmax,ymin,ymax = 0.0,0.0,0.0,0.0
         else:
             xmin,xmax,ymin,ymax = self.Get_Design_Bounds()
         
         X = self.laserX + dx_inches
-        X = min(MAXX-(xmax-xmin),X)
-        X = max(MINX,X)
-        
         Y = self.laserY + dy_inches
-        Y = max(MINY+(ymax-ymin),Y)
-        Y = min(MAXY,Y)
-        
+        ################
+        dx=xmax-xmin
+        dy=ymax-ymin
+        if X < MINX:
+            X = MINX
+        if X+dx > MAXX:
+            X = MAXX-dx
+            
+        if Y-dy < MINY:
+            Y = MINY+dy
+        if Y > MAXY:
+            Y = MAXY
+        ################
+        if not no_size:
+            XOFF = self.pos_offset[0]/1000.0
+            YOFF = self.pos_offset[1]/1000.0
+            if X+XOFF < MINX:
+                X= X +(MINX-(X+XOFF))
+            if X+XOFF > MAXX:
+                X= X -((X+XOFF)-MAXX)
+            if Y+YOFF < MINY:
+                Y= Y + (MINY-(Y+YOFF))
+            if Y+YOFF > MAXY:
+                Y= Y -((Y+YOFF)-MAXY)
+        ################
         X = round(X,3)
         Y = round(Y,3)
         return X,Y
@@ -1086,8 +1125,9 @@ class Application(Frame):
     def Settings_ReLoad_Click(self, event):
         win_id=self.grab_current()
 
-    def Close_Current_Window_Click(self):
-        win_id=self.grab_current()
+    def Close_Current_Window_Click(self,event=None):
+        current_name = event.widget.winfo_parent()
+        win_id = event.widget.nametowidget(current_name)
         win_id.destroy()
         
     # Left Column #
@@ -1186,6 +1226,49 @@ class Application(Frame):
         return 0         # Value is a valid number
     def Entry_Rstep_Callback(self, varName, index, mode):
         self.entry_set(self.Entry_Rstep, self.Entry_Rstep_Check(), new=1)
+
+##    #############################
+##    def Entry_Unsharp_Radius_Check(self):
+##        try:
+##            value = float(self.unsharp_r.get())
+##            if  value <= 0:
+##                self.statusMessage.set(" Radius should be greater than zero.")
+##                return 2 # Value is invalid number
+##        except:
+##            return 3     # Value not a number
+##        self.menu_View_Refresh_Callback()
+##        return 0         # Value is a valid number
+##    def Entry_Unsharp_Radius_Callback(self, varName, index, mode):
+##        self.entry_set(self.Entry_Unsharp_Radius, self.Entry_Unsharp_Radius_Check(), new=1)
+##        
+##
+##    #############################
+##    def Entry_Unsharp_Percent_Check(self):
+##        try:
+##            value = float(self.unsharp_p.get())
+##            if  value <= 0:
+##                self.statusMessage.set(" Percent should be greater than zero.")
+##                return 2 # Value is invalid number
+##        except:
+##            return 3     # Value not a number
+##        self.menu_View_Refresh_Callback()
+##        return 0         # Value is a valid number
+##    def Entry_Unsharp_Percent_Callback(self, varName, index, mode):
+##        self.entry_set(self.Entry_Unsharp_Percent, self.Entry_Unsharp_Percent_Check(), new=1)
+##        
+##    #############################
+##    def Entry_Unsharp_Threshold_Check(self):
+##        try:
+##            value = float(self.unsharp_t.get())
+##            if  value < 0:
+##                self.statusMessage.set(" Threshold should be greater than or equal to zero.")
+##                return 2 # Value is invalid number
+##        except:
+##            return 3     # Value not a number
+##        self.menu_View_Refresh_Callback()
+##        return 0         # Value is a valid number
+##    def Entry_Unsharp_Threshold_Callback(self, varName, index, mode):
+##        self.entry_set(self.Entry_Unsharp_Threshold, self.Entry_Unsharp_Threshold_Check(), new=1)
  
     #############################
     # End Left Column #
@@ -1284,7 +1367,7 @@ class Application(Frame):
         try:
             value = float(self.LaserXscale.get())
             if  value <= 0.0:
-                self.statusMessage.set(" Scale should be greater than 0 ")
+                self.statusMessage.set(" X scale factor should be greater than 0 ")
                 return 2 # Value is invalid number
         except:
             return 3     # Value not a number
@@ -1296,13 +1379,39 @@ class Application(Frame):
         try:
             value = float(self.LaserYscale.get())
             if  value <= 0.0:
-                self.statusMessage.set(" Height should be greater than 0 ")
+                self.statusMessage.set(" Y scale factor should be greater than 0 ")
                 return 2 # Value is invalid number
         except:
             return 3     # Value not a number
         return 0         # Value is a valid number
     def Entry_Laser_Y_Scale_Callback(self, varName, index, mode):
         self.entry_set(self.Entry_Laser_Y_Scale,self.Entry_Laser_Y_Scale_Check(), new=1)
+
+    #############################
+    def Entry_Laser_R_Scale_Check(self):
+        try:
+            value = float(self.LaserRscale.get())
+            if  value <= 0.0:
+                self.statusMessage.set(" Rotary scale factor should be greater than 0 ")
+                return 2 # Value is invalid number
+        except:
+            return 3     # Value not a number
+        return 0         # Value is a valid number
+    def Entry_Laser_R_Scale_Callback(self, varName, index, mode):
+        self.entry_set(self.Entry_Laser_R_Scale,self.Entry_Laser_R_Scale_Check(), new=1)
+        
+    #############################
+    def Entry_Laser_Rapid_Feed_Check(self):
+        try:
+            value = float(self.rapid_feed.get())
+            if  value < 0.0:
+                self.statusMessage.set(" Rapid feed should be greater than 0 (or 0 for default speed) ")
+                return 2 # Value is invalid number
+        except:
+            return 3     # Value not a number
+        return 0         # Value is a valid number
+    def Entry_Laser_Rapid_Feed_Callback(self, varName, index, mode):
+        self.entry_set(self.Entry_Laser_Rapid_Feed,self.Entry_Laser_Rapid_Feed_Check(), new=1)
 
     # Advanced Column #
     #############################
@@ -1476,6 +1585,7 @@ class Application(Frame):
             self.Open_G_Code(filename)
         self.menu_View_Refresh()
         
+        
 
     def menu_File_Open_Design(self,event=None):
         init_dir = os.path.dirname(self.DESIGN_FILE)
@@ -1528,8 +1638,10 @@ class Application(Frame):
     def menu_File_Raster_Vector_Cut(self):
         self.menu_File_save_EGV(operation_type="Raster_Eng-Vector_Eng-Vector_Cut")
 
-
     def menu_File_save_EGV(self,operation_type=None,default_name="out.EGV"):
+        self.stop[0]=False
+        if DEBUG:
+            start=time()
         fileName, fileExtension = os.path.splitext(self.DESIGN_FILE)
         init_file=os.path.basename(fileName)
         default_name = init_file+"_"+operation_type
@@ -1560,10 +1672,14 @@ class Application(Frame):
                 
             self.send_data(operation_type=operation_type, output_filename=filename)
             self.EGV_FILE = filename
+        if DEBUG:
+            print("time = %d seconds" %(int(time()-start)))
+        self.stop[0]=True
         
 
 
     def menu_File_Open_EGV(self):
+        self.stop[0]=False
         init_dir = os.path.dirname(self.DESIGN_FILE)
         if ( not os.path.isdir(init_dir) ):
             init_dir = self.HOME_DIR
@@ -1574,7 +1690,7 @@ class Application(Frame):
             self.resetPath()
             self.DESIGN_FILE = fileselect
             self.EGV_Send_Window(fileselect)
-
+        self.stop[0]=True
             
     def Open_EGV(self,filemname,n_passes=1):
         pass
@@ -1638,10 +1754,13 @@ class Application(Frame):
         try:
             self.send_egv_data(EGV_data,n_passes)
         except MemoryError as e:
-            #raise StandardError("Memory Error:  Out of Memory.")
-            raise Exception("Memory Error:  Out of Memory.")
+            msg1 = "Memory Error:"
+            msg2 = "Memory Error:  Out of Memory."
+            self.statusMessage.set(msg2)
+            self.statusbar.configure( bg = 'red' )
+            message_box(msg1, msg2)
             debug_message(traceback.format_exc())
-        #except StandardError as e:
+            
         except Exception as e:
             msg1 = "Sending Data Stopped: "
             msg2 = "%s" %(e)
@@ -1668,14 +1787,32 @@ class Application(Frame):
         svg_reader.image_dpi = self.input_dpi
         try:
             try:
-                svg_reader.parse(self.SVG_FILE)
-                svg_reader.make_paths()
+                try:
+                    svg_reader.parse_svg(self.SVG_FILE)
+                    svg_reader.make_paths()
+                except SVG_PXPI_EXCEPTION as e:
+                    pxpi_dialog = pxpiDialog(root,
+                                           self.units.get(),
+                                           svg_reader.SVG_Size,
+                                           svg_reader.SVG_ViewBox,
+                                           svg_reader.SVG_inkscape_version)
+                    
+                    svg_reader = SVG_READER()
+                    svg_reader.set_inkscape_path(self.inkscape_path.get())
+                    if pxpi_dialog.result == None:
+                        return
+                    
+                    pxpi,viewbox = pxpi_dialog.result
+                    svg_reader.parse_svg(self.SVG_FILE)
+                    svg_reader.set_size(pxpi,viewbox)
+                    svg_reader.make_paths()
+                    
             except SVG_TEXT_EXCEPTION as e:
                 svg_reader = SVG_READER()
                 svg_reader.set_inkscape_path(self.inkscape_path.get())
                 self.statusMessage.set("Converting TEXT to PATHS.")
                 self.master.update()
-                svg_reader.parse(self.SVG_FILE)
+                svg_reader.parse_svg(self.SVG_FILE)
                 svg_reader.make_paths(txt2paths=True)
                 
         except Exception as e:
@@ -1744,34 +1881,22 @@ class Application(Frame):
             ymin=min(ymin,y1,y2)
         bounds = (xmin,xmax,ymin,ymax)
         return ecoords,bounds
-
-##    def convert_greyscale(self,image):
-##        image = image.convert('RGB')
-##        x_lim, y_lim = image.size
-##        grey = Image.new("L", image.size, color=255)
-##        
-##        pixel = image.load()
-##        grey_pixel = grey.load()
-##        
-##        for y in range(1, y_lim):
-##            self.statusMessage.set("Converting to greyscale: %.1f %%" %( (100.0*y)/y_lim ) )
-##            self.master.update()
-##            for x in range(1, x_lim):
-##                value = pixel[x, y]
-##                grey_pixel[x,y] = int( value[0]*.333 + value[1]*.333 +value[2]*.333 )
-##                #grey_pixel[x,y] = int( value[0]*.210 + value[1]*.720 +value[2]*.007 )
-##                grey_pixel[x,y] = int( value[0]*.299 + value[1]*.587 +value[2]*.114 )
-##
-##        grey.save("adjusted_grey.png","PNG")
-##        return grey
-
     
     #####################################################################
     def make_raster_coords(self):
+        try:
             ecoords=[]
             if (self.RengData.image != None):
                 cutoff=128
                 image_temp = self.RengData.image.convert("L")
+##                if self.unsharp_flag.get():
+##                    from PIL import ImageFilter       
+##                    #image_temp = image_temp.filter(UnsharpMask(radius=self.unsharp_r, percent=self.unsharp_p, threshold=self.unsharp_t))
+##                    filter = ImageFilter.UnsharpMask()
+##                    filter.radius    = float(self.unsharp_r.get())
+##                    filter.percent   = int(float(self.unsharp_p.get()))
+##                    filter.threshold = int(float(self.unsharp_t.get()))
+##                    image_temp = image_temp.filter(filter)
 
                 if self.negate.get():
                     image_temp = ImageOps.invert(image_temp)
@@ -1784,7 +1909,11 @@ class Application(Frame):
                     image_temp = self.rotate_raster(image_temp)
 
                 Xscale = float(self.LaserXscale.get())
-                Yscale = float(self.LaserYscale.get())
+                Yscale = float(self.LaserYscale.get())    
+                if self.rotary.get():
+                    Rscale = float(self.LaserRscale.get())
+                    Yscale = Yscale*Rscale
+
                 if Xscale != 1.0 or Yscale != 1.0:
                     wim,him = image_temp.size
                     nw = int(wim*Xscale)
@@ -1807,6 +1936,10 @@ class Application(Frame):
                     image_temp = self.convert_halftoning(image_temp)
                     image_temp = image_temp.resize((wim,him))
                     #print time()-start
+                else:
+                    image_temp = image_temp.point(lambda x: 0 if x<128 else 255, '1')
+                    #image_temp = image_temp.convert('1',dither=Image.NONE)
+                    
                     
                 if DEBUG:
                     image_name = os.path.expanduser("~")+"/IMAGE.png"
@@ -1814,14 +1947,18 @@ class Application(Frame):
 
                 Reng_np = image_temp.load()
                 wim,him = image_temp.size
+                del image_temp
                 #######################################
                 x=0
                 y=0
                 loop=1
                 
                 Raster_step = self.get_raster_step_1000in()
+                timestamp=0
                 for i in range(0,him,Raster_step):
-                    if i%100 ==0:
+                    stamp=int(3*time()) #update every 1/3 of a second
+                    if (stamp != timestamp):
+                        timestamp=stamp #interlock
                         self.statusMessage.set("Raster Engraving: Creating Scan Lines: %.1f %%" %( (100.0*i)/him ) )
                         self.master.update()
                     if self.stop[0]==True:
@@ -1854,6 +1991,22 @@ class Application(Frame):
                         
             if ecoords!=[]:
                 self.RengData.set_ecoords(ecoords,data_sorted=True)
+                
+        except MemoryError as e:
+            msg1 = "Memory Error:"
+            msg2 = "Memory Error:  Out of Memory."
+            self.statusMessage.set(msg2)
+            self.statusbar.configure( bg = 'red' )
+            message_box(msg1, msg2)
+            debug_message(traceback.format_exc())
+            
+        except Exception as e:
+            msg1 = "Making Raster Coords Stopped: "
+            msg2 = "%s" %(e)
+            self.statusMessage.set((msg1+msg2).split("\n")[0] )
+            self.statusbar.configure( bg = 'red' )
+            message_box(msg1, msg2)
+            debug_message(traceback.format_exc())
     #######################################################################
 
 
@@ -1913,9 +2066,13 @@ class Application(Frame):
                 val_out = int(round(interp[val])) # Get the interpolated value at each value
                 val_map.append(val_out)
             # Adjust image
+            timestamp=0
             for y in range(1, y_lim):
-                self.statusMessage.set("Raster Engraving: Adjusting Image Darkness: %.1f %%" %( (100.0*y)/y_lim ) )
-                self.master.update()
+                stamp=int(3*time()) #update every 1/3 of a second
+                if (stamp != timestamp):
+                    timestamp=stamp #interlock
+                    self.statusMessage.set("Raster Engraving: Adjusting Image Darkness: %.1f %%" %( (100.0*y)/y_lim ) )
+                    self.master.update()
                 for x in range(1, x_lim):
                     pixel[x, y] = val_map[ pixel[x, y] ]
 
@@ -2054,105 +2211,127 @@ class Application(Frame):
         text_codes=[]
         ident = "k40_whisperer_set"
         for line in fin:
-            if ident in line:
-                # BOOL
-                if "include_Reng"  in line:
-                    self.include_Reng.set(line[line.find("include_Reng"):].split()[1])
-                elif "include_Veng"  in line:
-                    self.include_Veng.set(line[line.find("include_Veng"):].split()[1])
-                elif "include_Vcut"  in line:
-                    self.include_Vcut.set(line[line.find("include_Vcut"):].split()[1])
-                elif "include_Gcde"  in line:
-                    self.include_Gcde.set(line[line.find("include_Gcde"):].split()[1])
-                elif "include_Time"  in line:
-                    self.include_Time.set(line[line.find("include_Time"):].split()[1])
-                elif "halftone"  in line:
-                    self.halftone.set(line[line.find("halftone"):].split()[1])
-                elif "negate"  in line:
-                    self.negate.set(line[line.find("negate"):].split()[1])
-                elif "HomeUR"  in line:
-                    self.HomeUR.set(line[line.find("HomeUR"):].split()[1])                    
-                elif "inputCSYS"  in line:
-                    self.inputCSYS.set(line[line.find("inputCSYS"):].split()[1])
-                elif "advanced"  in line:
-                    self.advanced.set(line[line.find("advanced"):].split()[1])
-                elif "mirror"  in line:
-                    self.mirror.set(line[line.find("mirror"):].split()[1])
-                elif "rotate"  in line:
-                    self.rotate.set(line[line.find("rotate"):].split()[1])
-                elif "engraveUP"  in line:
-                    self.engraveUP.set(line[line.find("engraveUP"):].split()[1])
-                elif "init_home"  in line:
-                    self.init_home.set(line[line.find("init_home"):].split()[1])
-                elif "pre_pr_crc"  in line:
-                    self.pre_pr_crc.set(line[line.find("pre_pr_crc"):].split()[1])
-                elif "inside_first"  in line:
-                    self.inside_first.set(line[line.find("inside_first"):].split()[1])
-                elif "comb_engrave"  in line:
-                    self.comb_engrave.set(line[line.find("comb_engrave"):].split()[1])
-                elif "comb_vector"  in line:
-                    self.comb_vector.set(line[line.find("comb_vector"):].split()[1])
-                elif "zoom2image"  in line:
-                    self.zoom2image.set(line[line.find("zoom2image"):].split()[1])
-        
-                # STRING.set()
-                elif "board_name" in line:
-                    self.board_name.set(line[line.find("board_name"):].split()[1])
-                elif "units"    in line:
-                    self.units.set(line[line.find("units"):].split()[1])
-                elif "Reng_feed"    in line:
-                     self.Reng_feed .set(line[line.find("Reng_feed"):].split()[1])
-                elif "Veng_feed"    in line:
-                     self.Veng_feed .set(line[line.find("Veng_feed"):].split()[1])  
-                elif "Vcut_feed"    in line:
-                     self.Vcut_feed.set(line[line.find("Vcut_feed"):].split()[1])
-                elif "jog_step"    in line:
-                     self.jog_step.set(line[line.find("jog_step"):].split()[1])
-                     
-                elif "Reng_passes"    in line:
-                     self.Reng_passes.set(line[line.find("Reng_passes"):].split()[1])
-                elif "Veng_passes"    in line:
-                     self.Veng_passes.set(line[line.find("Veng_passes"):].split()[1])
-                elif "Vcut_passes"    in line:
-                     self.Vcut_passes.set(line[line.find("Vcut_passes"):].split()[1])
-                elif "Gcde_passes"    in line:
-                     self.Gcde_passes.set(line[line.find("Gcde_passes"):].split()[1])
+            try:
+                if ident in line:
+                    # BOOL
+                    if "include_Reng"  in line:
+                        self.include_Reng.set(line[line.find("include_Reng"):].split()[1])
+                    elif "include_Veng"  in line:
+                        self.include_Veng.set(line[line.find("include_Veng"):].split()[1])
+                    elif "include_Vcut"  in line:
+                        self.include_Vcut.set(line[line.find("include_Vcut"):].split()[1])
+                    elif "include_Gcde"  in line:
+                        self.include_Gcde.set(line[line.find("include_Gcde"):].split()[1])
+                    elif "include_Time"  in line:
+                        self.include_Time.set(line[line.find("include_Time"):].split()[1])
+                    elif "halftone"  in line:
+                        self.halftone.set(line[line.find("halftone"):].split()[1])
+                    elif "negate"  in line:
+                        self.negate.set(line[line.find("negate"):].split()[1])
+                    elif "HomeUR"  in line:
+                        self.HomeUR.set(line[line.find("HomeUR"):].split()[1])                    
+                    elif "inputCSYS"  in line:
+                        self.inputCSYS.set(line[line.find("inputCSYS"):].split()[1])
+                    elif "advanced"  in line:
+                        self.advanced.set(line[line.find("advanced"):].split()[1])
+                    elif "mirror"  in line:
+                        self.mirror.set(line[line.find("mirror"):].split()[1])
+                    elif "rotate"  in line:
+                        self.rotate.set(line[line.find("rotate"):].split()[1])
+                    elif "engraveUP"  in line:
+                        self.engraveUP.set(line[line.find("engraveUP"):].split()[1])
+                    elif "init_home"  in line:
+                        self.init_home.set(line[line.find("init_home"):].split()[1])
+                    elif "pre_pr_crc"  in line:
+                        self.pre_pr_crc.set(line[line.find("pre_pr_crc"):].split()[1])
+                    elif "inside_first"  in line:
+                        self.inside_first.set(line[line.find("inside_first"):].split()[1])
+                    elif "comb_engrave"  in line:
+                        self.comb_engrave.set(line[line.find("comb_engrave"):].split()[1])
+                    elif "comb_vector"  in line:
+                        self.comb_vector.set(line[line.find("comb_vector"):].split()[1])
+                    elif "zoom2image"  in line:
+                        self.zoom2image.set(line[line.find("zoom2image"):].split()[1])
 
-                elif "rast_step"    in line:
-                     self.rast_step.set(line[line.find("rast_step"):].split()[1])
-                elif "ht_size"    in line:
-                     self.ht_size.set(line[line.find("ht_size"):].split()[1])
+                    elif "rotary"    in line:
+                         self.rotary.set(line[line.find("rotary"):].split()[1])
+            
+                    # STRING.set()
+                    elif "board_name" in line:
+                        self.board_name.set(line[line.find("board_name"):].split()[1])
+                    elif "units"    in line:
+                        self.units.set(line[line.find("units"):].split()[1])
+                    elif "Reng_feed"    in line:
+                         self.Reng_feed .set(line[line.find("Reng_feed"):].split()[1])
+                    elif "Veng_feed"    in line:
+                         self.Veng_feed .set(line[line.find("Veng_feed"):].split()[1])  
+                    elif "Vcut_feed"    in line:
+                         self.Vcut_feed.set(line[line.find("Vcut_feed"):].split()[1])
+                    elif "jog_step"    in line:
+                         self.jog_step.set(line[line.find("jog_step"):].split()[1])
+                         
+                    elif "Reng_passes"    in line:
+                         self.Reng_passes.set(line[line.find("Reng_passes"):].split()[1])
+                    elif "Veng_passes"    in line:
+                         self.Veng_passes.set(line[line.find("Veng_passes"):].split()[1])
+                    elif "Vcut_passes"    in line:
+                         self.Vcut_passes.set(line[line.find("Vcut_passes"):].split()[1])
+                    elif "Gcde_passes"    in line:
+                         self.Gcde_passes.set(line[line.find("Gcde_passes"):].split()[1])
 
-                elif "LaserXsize"    in line:
-                     self.LaserXsize.set(line[line.find("LaserXsize"):].split()[1])
-                elif "LaserYsize"    in line:
-                     self.LaserYsize.set(line[line.find("LaserYsize"):].split()[1])
-                elif "LaserXscale"    in line:
-                     self.LaserXscale.set(line[line.find("LaserXscale"):].split()[1])
-                elif "LaserYscale"    in line:
-                     self.LaserYscale.set(line[line.find("LaserYscale"):].split()[1])
-                     
-                elif "gotoX"    in line:
-                     self.gotoX.set(line[line.find("gotoX"):].split()[1])
-                elif "gotoY"    in line:
-                     self.gotoY.set(line[line.find("gotoY"):].split()[1])
+                    elif "rast_step"    in line:
+                         self.rast_step.set(line[line.find("rast_step"):].split()[1])
+                    elif "ht_size"    in line:
+                         self.ht_size.set(line[line.find("ht_size"):].split()[1])
 
-                elif "bezier_M1"    in line:
-                     self.bezier_M1.set(line[line.find("bezier_M1"):].split()[1])
-                elif "bezier_M2"    in line:
-                     self.bezier_M2.set(line[line.find("bezier_M2"):].split()[1])
-                elif "bezier_weight"    in line:
-                     self.bezier_weight.set(line[line.find("bezier_weight"):].split()[1])
-        
-                elif "t_timeout"    in line:
-                     self.t_timeout.set(line[line.find("t_timeout"):].split()[1])
-                elif "n_timeouts"    in line:
-                     self.n_timeouts.set(line[line.find("n_timeouts"):].split()[1]) 
+                    elif "LaserXsize"    in line:
+                         self.LaserXsize.set(line[line.find("LaserXsize"):].split()[1])
+                    elif "LaserYsize"    in line:
+                         self.LaserYsize.set(line[line.find("LaserYsize"):].split()[1])
 
-                elif "designfile"    in line:
-                       self.DESIGN_FILE=(line[line.find("designfile"):].split("\042")[1])
-                elif "inkscape_path"    in line:
-                     self.inkscape_path.set(line[line.find("inkscape_path"):].split("\042")[1])
+                    elif "LaserXscale"    in line:
+                         self.LaserXscale.set(line[line.find("LaserXscale"):].split()[1])
+                    elif "LaserYscale"    in line:
+                         self.LaserYscale.set(line[line.find("LaserYscale"):].split()[1])
+                    elif "LaserRscale"    in line:
+                         self.LaserRscale.set(line[line.find("LaserRscale"):].split()[1])
+
+                    elif "rapid_feed"    in line:
+                         self.rapid_feed.set(line[line.find("rapid_feed"):].split()[1])
+                         
+                    elif "gotoX"    in line:
+                         self.gotoX.set(line[line.find("gotoX"):].split()[1])
+                    elif "gotoY"    in line:
+                         self.gotoY.set(line[line.find("gotoY"):].split()[1])
+
+                    elif "bezier_M1"    in line:
+                         self.bezier_M1.set(line[line.find("bezier_M1"):].split()[1])
+                    elif "bezier_M2"    in line:
+                         self.bezier_M2.set(line[line.find("bezier_M2"):].split()[1])
+                    elif "bezier_weight"    in line:
+                         self.bezier_weight.set(line[line.find("bezier_weight"):].split()[1])
+
+    ##                elif "unsharp_flag"    in line:
+    ##                     self.unsharp_flag.set(line[line.find("unsharp_flag"):].split()[1])
+    ##                elif "unsharp_r"    in line:
+    ##                     self.unsharp_r.set(line[line.find("unsharp_r"):].split()[1])
+    ##                elif "unsharp_p"    in line:
+    ##                     self.unsharp_p.set(line[line.find("unsharp_p"):].split()[1])
+    ##                elif "unsharp_t"    in line:
+    ##                     self.unsharp_t.set(line[line.find("unsharp_t"):].split()[1])
+            
+                    elif "t_timeout"    in line:
+                         self.t_timeout.set(line[line.find("t_timeout"):].split()[1])
+                    elif "n_timeouts"    in line:
+                         self.n_timeouts.set(line[line.find("n_timeouts"):].split()[1]) 
+
+                    elif "designfile"    in line:
+                           self.DESIGN_FILE=(line[line.find("designfile"):].split("\042")[1])
+                    elif "inkscape_path"    in line:
+                         self.inkscape_path.set(line[line.find("inkscape_path"):].split("\042")[1])
+            except:
+                #Ignoring exeptions during reading data from line 
+                pass
                      
         fin.close()
 
@@ -2309,6 +2488,42 @@ class Application(Frame):
         else:
             pass
 
+    def Move_Arbitrary(self,MoveX,MoveY,dummy=None):
+        if self.HomeUR.get():
+            DX = -MoveX
+        else:
+            DX = MoveX
+        DY = MoveY
+        NewXpos = self.pos_offset[0]+DX
+        NewYpos = self.pos_offset[1]+DY
+        self.move_head_window_temporary([NewXpos,NewYpos])
+
+    def Move_Arb_Step(self,dx,dy):
+        if self.units.get()=="in":
+            dx_inches = round(dx*1000)
+            dy_inches = round(dy*1000)
+        else:
+            dx_inches = round(dx/25.4*1000)
+            dy_inches = round(dy/25.4*1000)
+        self.Move_Arbitrary( dx_inches,dy_inches )
+
+    def Move_Arb_Right(self,dummy=None):
+        JOG_STEP = float( self.jog_step.get() )
+        self.Move_Arb_Step( JOG_STEP,0 )
+
+    def Move_Arb_Left(self,dummy=None):
+        JOG_STEP = float( self.jog_step.get() )
+        self.Move_Arb_Step( -JOG_STEP,0 )
+
+    def Move_Arb_Up(self,dummy=None):
+        JOG_STEP = float( self.jog_step.get() )
+        self.Move_Arb_Step( 0,JOG_STEP )
+
+    def Move_Arb_Down(self,dummy=None):
+        JOG_STEP = float( self.jog_step.get() )
+        self.Move_Arb_Step( 0,-JOG_STEP )
+
+    ####################################################
 
     def Move_Right(self,dummy=None):
         JOG_STEP = float( self.jog_step.get() )
@@ -2354,11 +2569,22 @@ class Application(Frame):
     def Send_Rapid_Move(self,dxmils,dymils):
         try:
             if self.k40 != None:
-                if float(self.LaserXscale.get()) != 1.0 or float(self.LaserYscale.get()) != 1.0:
-                    dxmils = int(round(dxmils *float(self.LaserXscale.get())))
-                    dymils = int(round(dymils *float(self.LaserYscale.get())))
+                Xscale = float(self.LaserXscale.get())
+                Yscale = float(self.LaserYscale.get())
+                if self.rotary.get():
+                    Rscale = float(self.LaserRscale.get())
+                    Yscale = Yscale*Rscale
+                    
+                if Xscale != 1.0 or Yscale != 1.0:    
+                    dxmils = int(round(dxmils *Xscale))
+                    dymils = int(round(dymils *Yscale))
                 self.k40.n_timeouts = 10
-                self.k40.rapid_move(dxmils,dymils)
+                
+                if self.rotary.get() and float(self.rapid_feed.get()):
+                    self.slow_jog(int(dxmils),int(dymils))
+                else:
+                    self.k40.rapid_move(int(dxmils),int(dymils))
+
                 return True
             else:
                 return True
@@ -2371,7 +2597,17 @@ class Application(Frame):
             self.statusMessage.set((msg1+msg2).split("\n")[0] )
             self.statusbar.configure( bg = 'red' )
             debug_message(traceback.format_exc())
-            return False       
+            return False
+
+
+    def slow_jog(self,dxmils,dymils):
+        if int(dxmils)==0 and int(dymils)==0:
+            return
+        Rapid_data=[]
+        Rapid_inst = egv(target=lambda s:Rapid_data.append(s))
+        Rapid_inst.make_egv_rapid(dxmils,dymils,Feed=float(self.rapid_feed.get()),board_name=self.board_name.get())
+        self.send_egv_data(Rapid_data, 1, None)
+            
 
     def update_gui(self, message=None, bgcolor='white'):
         if message!=None:
@@ -2409,6 +2645,7 @@ class Application(Frame):
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data to cut")
         self.set_gui("normal")
+        self.stop[0]=True
         
     def Vector_Eng(self, output_filename=None):
         self.stop[0]=False
@@ -2422,6 +2659,7 @@ class Application(Frame):
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data to engrave")
         self.set_gui("normal")
+        self.stop[0]=True
 
     def Raster_Eng(self, output_filename=None):
         self.stop[0]=False
@@ -2436,6 +2674,15 @@ class Application(Frame):
             else:
                 self.statusbar.configure( bg = 'yellow' )
                 self.statusMessage.set("No raster data to engrave")
+
+        except MemoryError as e:
+            msg1 = "Memory Error:"
+            msg2 = "Memory Error:  Out of Memory."
+            self.statusMessage.set(msg2)
+            self.statusbar.configure( bg = 'red' )
+            message_box(msg1, msg2)
+            debug_message(traceback.format_exc())
+            
         except Exception as e:
             msg1 = "Making Raster Data Stopped: "
             msg2 = "%s" %(e)
@@ -2444,6 +2691,7 @@ class Application(Frame):
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
         self.set_gui("normal")
+        self.stop[0]=True
 
     def Raster_Vector_Eng(self, output_filename=None):
         self.stop[0]=False
@@ -2466,6 +2714,7 @@ class Application(Frame):
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
         self.set_gui("normal")
+        self.stop[0]=True
 
 
     def Vector_Eng_Cut(self, output_filename=None):
@@ -2480,6 +2729,7 @@ class Application(Frame):
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data.")
         self.set_gui("normal")
+        self.stop[0]=True
 
         
     def Raster_Vector_Cut(self, output_filename=None):
@@ -2503,6 +2753,7 @@ class Application(Frame):
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
         self.set_gui("normal")
+        self.stop[0]=True
         
         
     def Gcode_Cut(self, output_filename=None):
@@ -2517,6 +2768,7 @@ class Application(Frame):
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No g-code data to cut")
         self.set_gui("normal")
+        self.stop[0]=True
 
 
     ################################################################################
@@ -2733,8 +2985,13 @@ class Application(Frame):
         return coords_rotate_mirror
 
     def scale_vector_coords(self,coords,startx,starty):
+        
         Xscale = float(self.LaserXscale.get())
         Yscale = float(self.LaserYscale.get())
+        if self.rotary.get():
+            Rscale = float(self.LaserRscale.get())
+            Yscale = Yscale*Rscale
+
         coords_scale=[]
         if Xscale != 1.0 or Yscale != 1.0:
             for i in range(len(coords)):
@@ -2781,7 +3038,11 @@ class Application(Frame):
             else:
                 FlipXoffset = 0
 
-            
+            if self.rotary.get():
+                Rapid_Feed = float(self.rapid_feed.get())*feed_factor
+            else:
+                Rapid_Feed = 0.0
+                
             Raster_Eng_data=[]
             Vector_Eng_data=[]
             Vector_Cut_data=[]
@@ -2811,7 +3072,8 @@ class Application(Frame):
                                                 Raster_step = 0,                  \
                                                 update_gui=self.update_gui,       \
                                                 stop_calc=self.stop,              \
-                                                FlipXoffset=FlipXoffset
+                                                FlipXoffset=FlipXoffset,          \
+                                                Rapid_Feed_Rate = Rapid_Feed
                                                 )
 
             if (operation_type.find("Vector_Eng") > -1) and  (self.VengData.ecoords!=[]):
@@ -2838,7 +3100,8 @@ class Application(Frame):
                                                 Raster_step = 0,                  \
                                                 update_gui=self.update_gui,       \
                                                 stop_calc=self.stop,              \
-                                                FlipXoffset=FlipXoffset
+                                                FlipXoffset=FlipXoffset,          \
+                                                Rapid_Feed_Rate = Rapid_Feed
                                                 )
                 
             if (operation_type.find("Raster_Eng") > -1) and  (self.RengData.ecoords!=[]):
@@ -2848,7 +3111,12 @@ class Application(Frame):
                     Raster_step = -Raster_step
                     
                 raster_startx = 0
-                raster_starty = float(self.LaserYscale.get())*starty
+
+                Yscale = float(self.LaserYscale.get())
+                if self.rotary.get():
+                    Rscale = float(self.LaserRscale.get())
+                    Yscale = Yscale*Rscale
+                raster_starty = Yscale*starty
 
                 self.statusMessage.set("Generating EGV data...")
                 self.master.update()
@@ -2862,7 +3130,8 @@ class Application(Frame):
                                                 Raster_step = Raster_step,        \
                                                 update_gui=self.update_gui,       \
                                                 stop_calc=self.stop,              \
-                                                FlipXoffset=FlipXoffset
+                                                FlipXoffset=FlipXoffset,          \
+                                                Rapid_Feed_Rate = Rapid_Feed
                                                 )
                 
                 self.Reng=[]
@@ -2885,32 +3154,33 @@ class Application(Frame):
                                                 Raster_step = 0,                  \
                                                 update_gui=self.update_gui,       \
                                                 stop_calc=self.stop,              \
-                                                FlipXoffset=FlipXoffset
+                                                FlipXoffset=FlipXoffset,          \
+                                                Rapid_Feed_Rate = Rapid_Feed
                                                 )
                 
             ### Join Resulting Data together ###
             data=[]
             data.append(ord("I"))
             if Raster_Eng_data!=[]:
-                num_passes = int(self.Reng_passes.get())
+                num_passes = int(float(self.Reng_passes.get()))
                 for k in range(num_passes):
                     if len(data)> 4:
                         data[-4]=ord("@")
                     data.extend(Raster_Eng_data)
             if Vector_Eng_data!=[]:
-                num_passes = int(self.Veng_passes.get())
+                num_passes = int(float(self.Veng_passes.get()))
                 for k in range(num_passes):
                     if len(data)> 4:
                         data[-4]=ord("@")
                     data.extend(Vector_Eng_data)
             if Vector_Cut_data!=[]:
-                num_passes = int(self.Vcut_passes.get())
+                num_passes = int(float(self.Vcut_passes.get()))
                 for k in range(num_passes):
                     if len(data)> 4:
                         data[-4]=ord("@")
                     data.extend(Vector_Cut_data)
             if G_code_Cut_data!=[]:
-                num_passes = int(self.Gcde_passes.get())
+                num_passes = int(float(self.Gcde_passes.get()))
                 for k in range(num_passes):
                     if len(data)> 4:
                         data[-4]=ord("@")
@@ -2926,7 +3196,11 @@ class Application(Frame):
                 self.menu_View_Refresh()
                 
         except MemoryError as e:
-            raise Exception("Memory Error:  Out of Memory.")
+            msg1 = "Memory Error:"
+            msg2 = "Memory Error:  Out of Memory."
+            self.statusMessage.set(msg2)
+            self.statusbar.configure( bg = 'red' )
+            message_box(msg1, msg2)
             debug_message(traceback.format_exc())
         
         except Exception as e:
@@ -2942,8 +3216,8 @@ class Application(Frame):
     def send_egv_data(self,data,num_passes=1,output_filename=None):        
         pre_process_CRC        = self.pre_pr_crc.get()
         if self.k40 != None:
-            self.k40.timeout       = int(self.t_timeout.get())   
-            self.k40.n_timeouts    = int(self.n_timeouts.get())
+            self.k40.timeout       = int(float( self.t_timeout.get()  ))   
+            self.k40.n_timeouts    = int(float( self.n_timeouts.get() ))
             if DEBUG:
                 time_start = time()
             self.k40.send_data(data,self.update_gui,self.stop,num_passes,pre_process_CRC, wait_for_laser=True)
@@ -3006,8 +3280,10 @@ class Application(Frame):
                 pass
             
     def Stop(self,event=None):
-        line1 = "The K40 Whisperer is currently Paused."
-        line2 = "Press \"OK\" to stop current action."
+        if self.stop[0]==True:
+            return
+        line1 = "Sending data to the laser from K40 Whisperer is currently Paused."
+        line2 = "Press \"OK\" to abort any jobs currently running."
         line3 = "Press \"Cancel\" to resume."
         if message_ask_ok_cancel("Stop Laser Job.", "%s\n\n%s\n%s" %(line1,line2,line3)):
             self.stop[0]=True
@@ -3027,7 +3303,7 @@ class Application(Frame):
             self.k40=None
         
     def Initialize_Laser(self,event=None):
-        self.stop[0]=False
+        self.stop[0]=True
         self.Release_USB()
         self.k40=None
         self.move_head_window_temporary([0.0,0.0])      
@@ -3085,7 +3361,7 @@ class Application(Frame):
         self.SCALE = 0
         self.menu_View_Refresh()
 
-    def menu_View_Refresh_Callback(self, varName, index, mode):
+    def menu_View_Refresh_Callback(self, varName=0, index=0, mode=0):
         self.SCALE = 0
         self.menu_View_Refresh()
 
@@ -3126,6 +3402,7 @@ class Application(Frame):
                                   U_display))
 
         self.statusbar.configure( bg = 'white' )
+        macOS_button_fix(root)
         
     def menu_Mode_Change_Callback(self, varName, index, mode):
         self.menu_View_Refresh()
@@ -3143,8 +3420,12 @@ class Application(Frame):
         dummy_event.widget=self.master
         self.Master_Configure(dummy_event,1)
 
-    def menu_View_Recalculate(self):
-        pass
+
+    def menu_Calc_Raster_Paths(self):
+        self.stop[0]=False
+        self.make_raster_coords()
+        self.stop[0]=True
+        self.statusMessage.set(" Done calculating raster paths. ")
 
     def menu_Help_About(self):
         
@@ -3347,12 +3628,12 @@ class Application(Frame):
                     self.PreviewCanvas_frame.place(x=220+wadv, y=10)
                     self.separator_vert.place(x=220, y=10,width=2, height=self.h-50)
 
-                    adv_Yloc=15
+                    adv_Yloc=25-10 #15
                     self.Label_Advanced_column.place(x=Xadvanced, y=adv_Yloc, width=wadv_use, height=21)
                     adv_Yloc=adv_Yloc+25
                     self.separator_adv.place(x=Xadvanced, y=adv_Yloc,width=wadv_use, height=2)
 
-                    adv_Yloc=adv_Yloc+15
+                    adv_Yloc=adv_Yloc+25-20 #15
                     self.Label_Halftone_adv.place(x=Xadvanced, y=adv_Yloc, width=w_label_adv, height=21)
                     self.Checkbutton_Halftone_adv.place(x=Xadvanced+w_label_adv+2, y=adv_Yloc, width=25, height=23)
                     
@@ -3361,6 +3642,9 @@ class Application(Frame):
                     self.Checkbutton_Negate_adv.place(x=Xadvanced+w_label_adv+2, y=adv_Yloc, width=25, height=23)
 
                     adv_Yloc=adv_Yloc+25
+                    self.separator_adv2.place(x=Xadvanced, y=adv_Yloc,width=wadv_use, height=2)
+                    
+                    adv_Yloc=adv_Yloc+25-20
                     self.Label_Mirror_adv.place(x=Xadvanced, y=adv_Yloc, width=w_label_adv, height=21)
                     self.Checkbutton_Mirror_adv.place(x=Xadvanced+w_label_adv+2, y=adv_Yloc, width=25, height=23)
 
@@ -3373,9 +3657,18 @@ class Application(Frame):
                     self.Checkbutton_inputCSYS_adv.place(x=Xadvanced+w_label_adv+2, y=adv_Yloc, width=25, height=23)
 
                     adv_Yloc=adv_Yloc+25
+                    self.separator_adv3.place(x=Xadvanced, y=adv_Yloc,width=wadv_use, height=2)
+
+                    adv_Yloc=adv_Yloc+25-20
                     self.Label_Inside_First_adv.place(x=Xadvanced, y=adv_Yloc, width=w_label_adv, height=21)
                     self.Checkbutton_Inside_First_adv.place(x=Xadvanced+w_label_adv+2, y=adv_Yloc, width=25, height=23)
-                   
+                
+                    adv_Yloc=adv_Yloc+25
+                    self.Label_Rotary_Enable_adv.place(x=Xadvanced, y=adv_Yloc, width=w_label_adv, height=21)
+                    self.Checkbutton_Rotary_Enable_adv.place(x=Xadvanced+w_label_adv+2, y=adv_Yloc, width=25, height=23)
+
+
+
 
                     adv_Yloc = BUinit
                     self.Hide_Adv_Button.place (x=Xadvanced, y=adv_Yloc, width=wadv_use, height=30)
@@ -3433,19 +3726,22 @@ class Application(Frame):
                     self.separator_adv.place_forget() 
                     self.Label_Halftone_adv.place_forget()
                     self.Checkbutton_Halftone_adv.place_forget()
+                    self.Label_Negate_adv.place_forget()
+                    self.Checkbutton_Negate_adv.place_forget()
+                    self.separator_adv2.place_forget()
                     self.Label_Mirror_adv.place_forget()
                     self.Checkbutton_Mirror_adv.place_forget()
                     self.Label_Rotate_adv.place_forget()
-                    self.Label_Negate_adv.place_forget()
-                    self.Checkbutton_Negate_adv.place_forget()
                     self.Checkbutton_Rotate_adv.place_forget()
                     self.Label_inputCSYS_adv.place_forget()
                     self.Checkbutton_inputCSYS_adv.place_forget()
+                    self.separator_adv3.place_forget()
                     self.Label_Inside_First_adv.place_forget()
                     self.Checkbutton_Inside_First_adv.place_forget()
 
+                    self.Label_Rotary_Enable_adv.place_forget()
+                    self.Checkbutton_Rotary_Enable_adv.place_forget()
 
- 
                     self.separator_comb.place_forget()
                     self.Label_Comb_Engrave_adv.place_forget()
                     self.Checkbutton_Comb_Engrave_adv.place_forget()
@@ -3480,7 +3776,7 @@ class Application(Frame):
     def Set_Input_States_Event(self,event):
         self.Set_Input_States()
 
-    def Set_Input_States_RASTER(self):
+    def Set_Input_States_RASTER(self,event=None):
         if self.halftone.get():
             self.Label_Halftone_DPI.configure(state="normal")
             self.Halftone_DPI_OptionMenu.configure(state="normal")
@@ -3502,9 +3798,43 @@ class Application(Frame):
             self.Label_bezier_weight.configure(state="disabled")
             self.bezier_weight_Slider.configure(state="disabled")
 
+##    def Set_Input_States_Unsharp(self,event=None):        
+##        if self.unsharp_flag.get():
+##            self.Label_Unsharp_Radius.configure(state="normal")
+##            self.Label_Unsharp_Radius_u.configure(state="normal")
+##            self.Entry_Unsharp_Radius.configure(state="normal")
+##            self.Label_Unsharp_Percent.configure(state="normal")
+##            self.Label_Unsharp_Percent_u.configure(state="normal")
+##            self.Entry_Unsharp_Percent.configure(state="normal")
+##            self.Label_Unsharp_Threshold.configure(state="normal")
+##            self.Entry_Unsharp_Threshold.configure(state="normal")
+##
+##        else:
+##            self.Label_Unsharp_Radius.configure(state="disabled")
+##            self.Label_Unsharp_Radius_u.configure(state="disabled")
+##            self.Entry_Unsharp_Radius.configure(state="disabled")
+##            self.Label_Unsharp_Percent.configure(state="disabled")
+##            self.Label_Unsharp_Percent_u.configure(state="disabled")
+##            self.Entry_Unsharp_Percent.configure(state="disabled")
+##            self.Label_Unsharp_Threshold.configure(state="disabled")
+##            self.Entry_Unsharp_Threshold.configure(state="disabled")
+
+    def Set_Input_States_Rotary(self,event=None):
+        if self.rotary.get():
+            self.Label_Laser_R_Scale.configure(state="normal")
+            self.Entry_Laser_R_Scale.configure(state="normal")
+            self.Label_Laser_Rapid_Feed.configure(state="normal")
+            self.Label_Laser_Rapid_Feed_u.configure(state="normal")
+            self.Entry_Laser_Rapid_Feed.configure(state="normal")
+        else:
+            self.Label_Laser_R_Scale.configure(state="disabled")
+            self.Entry_Laser_R_Scale.configure(state="disabled")
+            self.Label_Laser_Rapid_Feed.configure(state="disabled")
+            self.Label_Laser_Rapid_Feed_u.configure(state="disabled")
+            self.Entry_Laser_Rapid_Feed.configure(state="disabled")
             
-    def Set_Input_States_RASTER_Event(self,event):
-        self.Set_Input_States_RASTER()
+#    def Set_Input_States_RASTER_Event(self,event):
+#        self.Set_Input_States_RASTER()
 
     def Imaging_Free(self,image_in,bg="#ffffff"):
         image_in = image_in.convert('L')
@@ -3586,15 +3916,22 @@ class Application(Frame):
                         self.SCALE = new_SCALE
                         nw=int(self.SCALE*self.wim)
                         nh=int(self.SCALE*self.him)
-                        #PIL_im = PIL_im.convert("1") #"1"=1BBP, "L"=grey
 
-                        plot_im = self.RengData.image.convert("L")
+                        plot_im = self.RengData.image.convert("L")                        
+##                        if self.unsharp_flag.get():
+##                            from PIL import ImageFilter
+##                            filter = ImageFilter.UnsharpMask()
+##                            filter.radius    = float(self.unsharp_r.get())
+##                            filter.percent   = int(float(self.unsharp_p.get()))
+##                            filter.threshold = int(float(self.unsharp_t.get()))
+##                            plot_im = plot_im.filter(filter)
                         
                         if self.negate.get():
                             plot_im = ImageOps.invert(plot_im)
 
                         if self.halftone.get() == False:
                             plot_im = plot_im.point(lambda x: 0 if x<128 else 255, '1')
+                            plot_im = plot_im.convert("L")
 
                         if self.mirror.get():
                             plot_im = ImageOps.mirror(plot_im)
@@ -3613,7 +3950,7 @@ class Application(Frame):
                     self.SCALE = 1
                     debug_message(traceback.format_exc())
                     
-                self.Plot_Raster(self.laserX, self.laserY-.0005, x_lft,y_top,self.PlotScale,im=self.UI_image)
+                self.Plot_Raster(self.laserX+.001, self.laserY-.001, x_lft,y_top,self.PlotScale,im=self.UI_image)
         else:
             self.UI_image = None
 
@@ -3678,13 +4015,10 @@ class Application(Frame):
                 XY    = line
                 x1    = (XY[0]-xmin)*scale
                 y1    = (XY[1]-ymax)*scale
-
                 loop  = XY[2]
                 # check and see if we need to move to a new discontinuous start point
                 if (loop == loop_old):
                     self.Plot_Line(xold, yold, x1, y1, x_lft, y_top, XlineShift, YlineShift, self.PlotScale, "red")
-                        
-                    
                 loop_old = loop
                 xold=x1
                 yold=y1
@@ -3712,15 +4046,20 @@ class Application(Frame):
                 loop_old = loop
                 xold=x1
                 yold=y1
-                
 
 
         ######################################            
         self.refreshTime()
         dot_col = "grey50"
         xoff = self.pos_offset[0]/1000.0
-        yoff = self.pos_offset[1]/1000.0    
-        self.Plot_circle(self.laserX+xoff,self.laserY+yoff,x_lft,y_top,self.PlotScale,dot_col,radius=5)
+        yoff = self.pos_offset[1]/1000.0
+
+        if abs(self.pos_offset[0])+abs(self.pos_offset[1]) > 0:
+            head_offset=True
+        else:
+            head_offset=False
+        
+        self.Plot_circle(self.laserX+xoff,self.laserY+yoff,x_lft,y_top,self.PlotScale,dot_col,radius=5,cross_hair=head_offset)
         
     def Plot_Raster(self, XX, YY, Xleft, Ytop, PlotScale, im):
         if (self.HomeUR.get()):
@@ -3735,20 +4074,60 @@ class Application(Frame):
             self.PreviewCanvas.create_image(xplt, yplt, anchor=NW, image=self.UI_image,tags='LaserTag')
             )
         
-    def Plot_circle(self, XX, YY, Xleft, Ytop, PlotScale, col, radius=0):
+    def Plot_circle(self, XX, YY, Xleft, Ytop, PlotScale, col, radius=0, cross_hair=False):
+        circle_tags = ('LaserTag','LaserDot')
         if (self.HomeUR.get()):
             maxx = float(self.LaserXsize.get()) / self.units_scale
             xplt = Xleft + maxx/PlotScale - XX/PlotScale
         else:
             xplt = Xleft + XX/PlotScale
         yplt = Ytop  - YY/PlotScale
-        self.segID.append(
-            self.PreviewCanvas.create_oval(
-                                            xplt-radius,
-                                            yplt-radius,
-                                            xplt+radius,
-                                            yplt+radius,
-                                            fill=col, outline=col, width = 0,tags='LaserTag') )
+
+
+        if cross_hair:
+            radius=radius*2
+            leg = int(radius*.707)
+            self.segID.append(
+                self.PreviewCanvas.create_polygon(
+                                                xplt-radius,
+                                                yplt,
+                                                xplt-leg,
+                                                yplt+leg,
+                                                xplt,
+                                                yplt+radius,
+                                                xplt+leg,
+                                                yplt+leg,
+                                                xplt+radius,
+                                                yplt,
+                                                xplt+leg,
+                                                yplt-leg,
+                                                xplt,
+                                                yplt-radius,
+                                                xplt-leg,
+                                                yplt-leg,
+                                                fill=col,  outline=col, width = 1, stipple='gray12',tags=circle_tags ))
+           
+            self.segID.append(
+                self.PreviewCanvas.create_line( xplt-radius,
+                                                yplt,
+                                                xplt+radius,
+                                                yplt,
+                                                fill=col, capstyle="round", width = 1, tags=circle_tags ))
+            self.segID.append(
+                self.PreviewCanvas.create_line( xplt,
+                                                yplt-radius,
+                                                xplt,
+                                                yplt+radius,
+                                                fill=col, capstyle="round", width = 1, tags=circle_tags ))
+        else:
+            self.segID.append(
+                self.PreviewCanvas.create_oval(
+                                                xplt-radius,
+                                                yplt-radius,
+                                                xplt+radius,
+                                                yplt+radius,
+                                                fill=col,  outline=col, width = 0, stipple='gray50',tags=circle_tags ))
+
 
     def Plot_Line(self, XX1, YY1, XX2, YY2, Xleft, Ytop, XlineShift, YlineShift, PlotScale, col, thick=0):
         xplt1 = Xleft + (XX1 + XlineShift )/PlotScale 
@@ -3767,6 +4146,14 @@ class Application(Frame):
     #                         Temporary Move Window                                #
     ################################################################################
     def move_head_window_temporary(self,new_pos_offset):
+        dx_inches = round(new_pos_offset[0]/1000.0,3)
+        dy_inches = round(new_pos_offset[1]/1000.0,3)
+        Xnew,Ynew = self.XY_in_bounds(dx_inches,dy_inches,no_size=True)
+
+        pos_offset_X = round((Xnew-self.laserX)*1000.0)
+        pos_offset_Y = round((Ynew-self.laserY)*1000.0)
+        new_pos_offset = [pos_offset_X,pos_offset_Y]        
+        
         if self.inputCSYS.get() and self.RengData.image == None:
             new_pos_offset = [0,0]
             xdist = -self.pos_offset[0]
@@ -3774,7 +4161,7 @@ class Application(Frame):
         else:
             xdist = -self.pos_offset[0] + new_pos_offset[0]
             ydist = -self.pos_offset[1] + new_pos_offset[1]
-
+            
         if self.k40 != None:
             if self.Send_Rapid_Move( xdist,ydist ):
                 self.pos_offset = new_pos_offset
@@ -3791,18 +4178,25 @@ class Application(Frame):
         gen_settings.grab_set() # Use grab_set to prevent user input in the main window
         gen_settings.focus_set()
         gen_settings.resizable(0,0)
-        gen_settings.title('Settings')
-        gen_settings.iconname("Settings")
+        gen_settings.title('General Settings')
+        gen_settings.iconname("General Settings")
+
+        try:
+            gen_settings.iconbitmap(bitmap="@emblem64")
+        except:
+            debug_message(traceback.format_exc())
+            pass
 
         D_Yloc  = 6
         D_dY = 26
         xd_label_L = 12
 
         w_label=150
-        w_entry=40
-        w_units=35
+        w_entry=100 #40
+        w_units=45
         xd_entry_L=xd_label_L+w_label+10
         xd_units_L=xd_entry_L+w_entry+5
+        sep_border=10
 
         #Radio Button
         D_Yloc=D_Yloc+D_dY
@@ -3830,7 +4224,6 @@ class Application(Frame):
         self.Checkbutton_Preprocess_CRC = Checkbutton(gen_settings,text="", anchor=W)
         self.Checkbutton_Preprocess_CRC.place(x=xd_entry_L, y=D_Yloc, width=75, height=23)
         self.Checkbutton_Preprocess_CRC.configure(variable=self.pre_pr_crc)
-
 
         D_Yloc=D_Yloc+D_dY
         self.Label_Timeout = Label(gen_settings,text="USB Timeout")
@@ -3923,8 +4316,7 @@ class Application(Frame):
         self.Entry_Laser_Y_Scale.configure(textvariable=self.LaserYscale)
         self.LaserYscale.trace_variable("w", self.Entry_Laser_Y_Scale_Callback)
         self.entry_set(self.Entry_Laser_Y_Scale,self.Entry_Laser_Y_Scale_Check(),2)
-        
-
+                
         D_Yloc=D_Yloc+D_dY+10
         self.Label_SaveConfig = Label(gen_settings,text="Configuration File")
         self.Label_SaveConfig.place(x=xd_label_L, y=D_Yloc, width=113, height=21)
@@ -3938,8 +4330,11 @@ class Application(Frame):
         Ybut=int(gen_settings.winfo_height())-30
         Xbut=int(gen_settings.winfo_width()/2)
 
-        self.GEN_Close = Button(gen_settings,text="Close",command=self.Close_Current_Window_Click)
+        self.GEN_Close = Button(gen_settings,text="Close")
         self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
+
+        macOS_button_fix(gen_settings)
 
     ################################################################################
     #                          Raster Settings Window                              #
@@ -3953,6 +4348,12 @@ class Application(Frame):
         raster_settings.resizable(0,0)
         raster_settings.title('Raster Settings')
         raster_settings.iconname("Raster Settings")
+
+        try:
+            raster_settings.iconbitmap(bitmap="@emblem64")
+        except:
+            debug_message(traceback.format_exc())
+            pass
 
         D_Yloc  = 6
         D_dY = 24
@@ -4044,6 +4445,45 @@ class Application(Frame):
         self.Label_bezier_weight.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
         self.bezier_weight.trace_variable("w", self.bezier_weight_Callback)
 
+##        show_unsharp = False
+##        if DEBUG and show_unsharp:
+##            D_Yloc=D_Yloc+D_dY
+##            self.Label_UnsharpMask = Label(raster_settings,text="Unsharp Mask")
+##            self.Label_UnsharpMask.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+##            self.Checkbutton_UnsharpMask = Checkbutton(raster_settings,text=" ", anchor=W, command=self.Set_Input_States_Unsharp)
+##            self.Checkbutton_UnsharpMask.place(x=w_label+22, y=D_Yloc, width=75, height=23)
+##            self.Checkbutton_UnsharpMask.configure(variable=self.unsharp_flag)
+##            self.unsharp_flag.trace_variable("w", self.menu_View_Refresh_Callback)
+##
+##            D_Yloc=D_Yloc+D_dY
+##            self.Label_Unsharp_Radius   = Label(raster_settings,text="Unsharp Mask Radius", anchor=CENTER )
+##            self.Label_Unsharp_Radius.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+##            self.Label_Unsharp_Radius_u = Label(raster_settings,text="Pixels", anchor=W)
+##            self.Label_Unsharp_Radius_u.place(x=xd_units_L, y=D_Yloc, width=w_units, height=21)
+##            self.Entry_Unsharp_Radius   = Entry(raster_settings,width="15")
+##            self.Entry_Unsharp_Radius.place(x=xd_entry_L, y=D_Yloc, width=w_entry, height=23)
+##            self.Entry_Unsharp_Radius.configure(textvariable=self.unsharp_r)
+##            self.unsharp_r.trace_variable("w", self.Entry_Unsharp_Radius_Callback)
+##
+##            D_Yloc=D_Yloc+D_dY
+##            self.Label_Unsharp_Percent   = Label(raster_settings,text="Unsharp Mask Percent", anchor=CENTER )
+##            self.Label_Unsharp_Percent.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+##            self.Label_Unsharp_Percent_u = Label(raster_settings,text="%", anchor=W)
+##            self.Label_Unsharp_Percent_u.place(x=xd_units_L, y=D_Yloc, width=w_units, height=21)
+##            self.Entry_Unsharp_Percent   = Entry(raster_settings,width="15")
+##            self.Entry_Unsharp_Percent.place(x=xd_entry_L, y=D_Yloc, width=w_entry, height=23)
+##            self.Entry_Unsharp_Percent.configure(textvariable=self.unsharp_p)
+##            self.unsharp_p.trace_variable("w", self.Entry_Unsharp_Percent_Callback)
+##
+##            D_Yloc=D_Yloc+D_dY
+##            self.Label_Unsharp_Threshold   = Label(raster_settings,text="Unsharp Mask Threshold", anchor=CENTER )
+##            self.Label_Unsharp_Threshold.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+##            #self.Label_Unsharp_Threshold_u = Label(raster_settings,text="Pixels", anchor=W)
+##            #self.Label_Unsharp_Threshold_u.place(x=xd_units_L, y=D_Yloc, width=w_units, height=21)
+##            self.Entry_Unsharp_Threshold   = Entry(raster_settings,width="15")
+##            self.Entry_Unsharp_Threshold.place(x=xd_entry_L, y=D_Yloc, width=w_entry, height=23)
+##            self.Entry_Unsharp_Threshold.configure(textvariable=self.unsharp_t)
+##            self.unsharp_t.trace_variable("w", self.Entry_Unsharp_Threshold_Callback)        
 
         # Bezier Canvas
         self.Bezier_frame = Frame(raster_settings, bd=1, relief=SUNKEN)
@@ -4068,14 +4508,82 @@ class Application(Frame):
         Ybut=int(raster_settings.winfo_height())-30
         Xbut=int(raster_settings.winfo_width()/2)
 
-        self.RASTER_Close = Button(raster_settings,text="Close",command=self.Close_Current_Window_Click)
+        self.RASTER_Close = Button(raster_settings,text="Close")
         self.RASTER_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.RASTER_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.bezier_M1_Callback()
         self.Set_Input_States_RASTER()
+        #if DEBUG and show_unsharp:
+        #    self.Set_Input_States_Unsharp()
 
 
+    ################################################################################
+    #                         Rotary Settings Window                               #
+    ################################################################################
+    def ROTARY_Settings_Window(self):
+        rotary_settings = Toplevel(width=350, height=175)
+        rotary_settings.grab_set() # Use grab_set to prevent user input in the main window
+        rotary_settings.focus_set()
+        rotary_settings.resizable(0,0)
+        rotary_settings.title('Rotary Settings')
+        rotary_settings.iconname("Rotary Settings")
 
+        try:
+            rotary_settings.iconbitmap(bitmap="@emblem64")
+        except:
+            debug_message(traceback.format_exc())
+            pass
+
+        D_Yloc  = 6
+        D_dY = 30
+        xd_label_L = 12
+
+        w_label=180
+        w_entry=40
+        w_units=45
+        xd_entry_L=xd_label_L+w_label+10
+        xd_units_L=xd_entry_L+w_entry+5
+        sep_border=10
+        
+
+        D_Yloc=D_Yloc+D_dY-15
+        self.Label_Rotary_Enable = Label(rotary_settings,text="Use Rotary Settings")
+        self.Label_Rotary_Enable.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+        self.Checkbutton_Rotary_Enable = Checkbutton(rotary_settings,text="", anchor=W, command=self.Set_Input_States_Rotary)
+        self.Checkbutton_Rotary_Enable.place(x=xd_entry_L, y=D_Yloc, width=75, height=23)
+        self.Checkbutton_Rotary_Enable.configure(variable=self.rotary)
+
+        D_Yloc=D_Yloc+D_dY
+        self.Label_Laser_R_Scale = Label(rotary_settings,text="Rotary Scale Factor (Y axis)")
+        self.Label_Laser_R_Scale.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+        self.Entry_Laser_R_Scale = Entry(rotary_settings,width="15")
+        self.Entry_Laser_R_Scale.place(x=xd_entry_L, y=D_Yloc, width=w_entry, height=23)
+        self.Entry_Laser_R_Scale.configure(textvariable=self.LaserRscale)
+        self.LaserRscale.trace_variable("w", self.Entry_Laser_R_Scale_Callback)
+        self.entry_set(self.Entry_Laser_R_Scale,self.Entry_Laser_R_Scale_Check(),2)
+
+        D_Yloc=D_Yloc+D_dY
+        self.Label_Laser_Rapid_Feed = Label(rotary_settings,text="Rapid Speed (default=0)")
+        self.Label_Laser_Rapid_Feed.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+        self.Label_Laser_Rapid_Feed_u = Label(rotary_settings,textvariable=self.funits, anchor=W)
+        self.Label_Laser_Rapid_Feed_u.place(x=xd_units_L, y=D_Yloc, width=w_units, height=21)
+        self.Entry_Laser_Rapid_Feed = Entry(rotary_settings,width="15")
+        self.Entry_Laser_Rapid_Feed.place(x=xd_entry_L, y=D_Yloc, width=w_entry, height=23)
+        self.Entry_Laser_Rapid_Feed.configure(textvariable=self.rapid_feed)
+        self.rapid_feed.trace_variable("w", self.Entry_Laser_Rapid_Feed_Callback)
+        self.entry_set(self.Entry_Laser_Rapid_Feed,self.Entry_Laser_Rapid_Feed_Check(),2)
+        
+        ## Buttons ##
+        rotary_settings.update_idletasks()
+        Ybut=int(rotary_settings.winfo_height())-30
+        Xbut=int(rotary_settings.winfo_width()/2)
+
+        self.GEN_Close = Button(rotary_settings,text="Close")
+        self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
+
+        self.Set_Input_States_Rotary()
 
     ################################################################################
     #                            EGV Send Window                                   #
@@ -4087,13 +4595,18 @@ class Application(Frame):
         egv_send.resizable(0,0)
         egv_send.title('EGV Send')
         egv_send.iconname("EGV Send")
+        try:
+            egv_send.iconbitmap(bitmap="@emblem64")
+        except:
+            debug_message(traceback.format_exc())
+            pass
 
         D_Yloc  = 0
         D_dY = 28
         xd_label_L = 12
 
         w_label=150
-        w_entry=40
+        w_entry=50
         w_units=35
         xd_entry_L=xd_label_L+w_label+10
         xd_units_L=xd_entry_L+w_entry+5
@@ -4128,17 +4641,19 @@ class Application(Frame):
         Ybut=int(egv_send.winfo_height())-30
         Xbut=int(egv_send.winfo_width()/2)
 
-        self.EGV_Close = Button(egv_send,text="Cancel",command=self.Close_Current_Window_Click)
+        self.EGV_Close = Button(egv_send,text="Cancel")
         self.EGV_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="e")
-
+        self.EGV_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         def Close_and_Send_Click():
             win_id=self.grab_current()
             win_id.destroy()
-            self.Open_EGV(EGV_filename, n_passes=int(self.n_egv_passes.get()) )
+            self.Open_EGV(EGV_filename, n_passes=int( float(self.n_egv_passes.get()) ))
             
         self.EGV_Send = Button(egv_send,text="Send EGV Data",command=Close_and_Send_Click)
         self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=30, anchor="w")
+
+        macOS_button_fix(egv_send)
         ################################################################################
         
         
@@ -4212,6 +4727,11 @@ class UnitsDialog(tkSimpleDialog.Dialog):
         self.resizable(0,0)
         self.title('Units')
         self.iconname("Units")
+
+        try:
+            self.iconbitmap(bitmap="@emblem64")
+        except:
+            pass
         
         self.uom = StringVar()
         self.uom.set("Millimeters")
@@ -4234,7 +4754,283 @@ class UnitsDialog(tkSimpleDialog.Dialog):
         return 
 
 
+        macOS_button_fix(raster_settings)
 
+class pxpiDialog(tkSimpleDialog.Dialog):
+        
+    def __init__(self,
+                 parent,
+                 units = "mm",
+                 SVG_Size            =None,
+                 SVG_ViewBox         =None,
+                 SVG_inkscape_version=None):
+
+        self.result = None
+        self.svg_pxpi   = StringVar()
+        self.other      = StringVar()
+        self.svg_width  = StringVar()
+        self.svg_height = StringVar()
+        self.svg_units  = StringVar()
+        self.fixed_size = False
+        self.svg_units.set(units)
+        if units=="mm":
+            self.scale=1.0
+        else:
+            self.scale=1/25.4
+
+        
+        ###################################
+        ##       Set initial pxpi          #
+        ###################################
+        pxpi = 72.0
+        if SVG_inkscape_version != None:
+            if SVG_inkscape_version >=.92:
+                pxpi = 96.0
+            else:
+                pxpi = 90.0
+  
+        self.svg_pxpi.set("%d"%(pxpi))
+        self.other.set("%d"%(pxpi))
+
+        ###################################
+        ##       Set minx/miny            #
+        ###################################
+        if SVG_ViewBox!=None and SVG_ViewBox[0]!=None and SVG_ViewBox[1]!=None:
+            self.minx_pixels = SVG_ViewBox[0]
+            self.miny_pixels = SVG_ViewBox[1]
+        else:
+            self.minx_pixels = 0.0
+            self.miny_pixels = 0.0
+            
+        ###################################
+        ##       Set Initial Size         #
+        ###################################
+        if SVG_Size!=None and SVG_Size[2]!=None and SVG_Size[3]!=None:
+            self.width_pixels = SVG_Size[2]
+            self.height_pixels = SVG_Size[3]
+        elif SVG_ViewBox!=None and SVG_ViewBox[2]!=None and SVG_ViewBox[3]!=None:
+            self.width_pixels = SVG_ViewBox[2]
+            self.height_pixels = SVG_ViewBox[3]
+        else:
+            self.width_pixels  = 500.0 
+            self.height_pixels = 500.0
+        ###################################
+        ##       Set Initial Size         #
+        ###################################
+        if SVG_Size[0]!=None and SVG_Size[1]!=None:
+            width  = SVG_Size[0] 
+            height = SVG_Size[1]
+            self.fixed_size=True
+        else:
+            width  = self.width_pixels/float(self.svg_pxpi.get())*25.4
+            height = self.height_pixels/float(self.svg_pxpi.get())*25.4
+            
+        self.svg_width.set("%f" %(width*self.scale))
+        self.svg_height.set("%f" %(height*self.scale))
+        ###################################
+        tkSimpleDialog.Dialog.__init__(self, parent) 
+
+
+    def body(self, master):
+        self.resizable(0,0)
+        self.title('SVG Import Scale:')
+        self.iconname("SVG Scale")
+        try:
+            self.iconbitmap(bitmap="@emblem64")
+        except:
+            pass
+        
+        ###########################################################################
+        def Entry_custom_Check():
+            try:
+                value = float(self.other.get())
+                if  value <= 0.0:
+                    return 2 # Value is invalid number
+            except:
+                return 3     # Value not a number
+            return 0         # Value is a valid number
+        def Entry_custom_Callback(varName, index, mode):
+            if Entry_custom_Check() > 0:
+                Entry_Custom_pxpi.configure( bg = 'red' )
+            else:
+                Entry_Custom_pxpi.configure( bg = 'white' )
+                pxpi = float(self.other.get())
+                width  = self.width_pixels/pxpi*25.4
+                height = self.height_pixels/pxpi*25.4
+                if self.fixed_size:
+                    pass
+                else:
+                    Set_Value(width=width*self.scale,height=height*self.scale)
+                self.svg_pxpi.set("custom")
+        ###################################################
+        def Entry_Width_Check():
+            try:
+                value = float(self.svg_width.get())/self.scale
+                if  value <= 0.0:
+                    return 2 # Value is invalid number
+            except:
+                return 3     # Value not a number
+            return 0         # Value is a valid number
+        def Entry_Width_Callback(varName, index, mode):
+            if Entry_Width_Check() > 0:
+                Entry_Custom_Width.configure( bg = 'red' )
+            else:
+                Entry_Custom_Width.configure( bg = 'white' )
+                width = float(self.svg_width.get())/self.scale
+                pxpi = self.width_pixels*25.4/width
+                height = self.height_pixels/pxpi*25.4
+                Set_Value(other=pxpi,height=height*self.scale)
+                self.svg_pxpi.set("custom")
+        ###################################################
+        def Entry_Height_Check():
+            try:
+                value = float(self.svg_height.get())
+                if  value <= 0.0:
+                    return 2 # Value is invalid number
+            except:
+                return 3     # Value not a number
+            return 0         # Value is a valid number
+        def Entry_Height_Callback(varName, index, mode):
+            if Entry_Height_Check() > 0:
+                Entry_Custom_Height.configure( bg = 'red' )
+            else:
+                Entry_Custom_Height.configure( bg = 'white' )
+                height = float(self.svg_height.get())/self.scale
+                pxpi = self.height_pixels*25.4/height
+                width = self.width_pixels/pxpi*25.4
+                Set_Value(other=pxpi,width=width*self.scale)
+                self.svg_pxpi.set("custom")
+        ###################################################       
+        def SVG_pxpi_callback(varName, index, mode):
+            if self.svg_pxpi.get() == "custom":
+                try:
+                    pxpi=float(self.other.get())
+                except:
+                    pass
+            else:
+                pxpi=float(self.svg_pxpi.get())
+                width  = self.width_pixels/pxpi*25.4
+                height = self.height_pixels/pxpi*25.4
+                if self.fixed_size:
+                    Set_Value(other=pxpi)
+                else:
+                    Set_Value(other=pxpi,width=width*self.scale,height=height*self.scale)
+                
+        ###########################################################################
+                    
+        def Set_Value(other=None,width=None,height=None):
+            self.svg_pxpi.trace_vdelete("w",self.trace_id_svg_pxpi)
+            self.other.trace_vdelete("w",self.trace_id_pxpi)
+            self.svg_width.trace_vdelete("w",self.trace_id_width)
+            self.svg_height.trace_vdelete("w",self.trace_id_height)
+            self.update_idletasks()
+            
+            if other != None:
+                self.other.set("%f" %(other))
+            if width != None:
+                self.svg_width.set("%f" %(width))
+            if height != None:
+                self.svg_height.set("%f" %(height))
+            
+            self.trace_id_svg_pxpi = self.svg_pxpi.trace_variable("w", SVG_pxpi_callback)
+            self.trace_id_pxpi     = self.other.trace_variable("w", Entry_custom_Callback)
+            self.trace_id_width   = self.svg_width.trace_variable("w", Entry_Width_Callback)
+            self.trace_id_height  = self.svg_height.trace_variable("w", Entry_Height_Callback)
+            self.update_idletasks()
+            
+        ###########################################################################
+        t0="This dialog opens if the SVG file you are opening\n"
+        t1="does not contain enough information to determine\n"
+        t2="the intended physical size of the design.\n"
+        t3="Select an SVG Import Scale:\n"
+        Title_Text0 = Label(master, text=t0+t1+t2, anchor=W)
+        Title_Text1 = Label(master, text=t3, anchor=W)
+        
+        Radio_SVG_pxpi_96   = Radiobutton(master,text=" 96 px/in", value="96")
+        Label_SVG_pxpi_96   = Label(master,text="(File saved with Inkscape v0.92 or newer)", anchor=W)
+        
+        Radio_SVG_pxpi_90   = Radiobutton(master,text=" 90 px/in", value="90")
+        Label_SVG_pxpi_90   = Label(master,text="(File saved with Inkscape v0.91 or older)", anchor=W)
+        
+        Radio_SVG_pxpi_72   = Radiobutton(master,text=" 72 px/in", value="72")
+        Label_SVG_pxpi_72   = Label(master,text="(File saved with Adobe Illustrator)", anchor=W)
+
+        Radio_Res_Custom = Radiobutton(master,text=" Custom:", value="custom")
+        Bottom_row       = Label(master, text=" ")
+        
+
+        Entry_Custom_pxpi   = Entry(master,width="10")
+        Entry_Custom_pxpi.configure(textvariable=self.other)
+        Label_pxpi_units =  Label(master,text="px/in", anchor=W)
+        self.trace_id_pxpi = self.other.trace_variable("w", Entry_custom_Callback)
+
+        Label_Width =  Label(master,text="Width", anchor=W)
+        Entry_Custom_Width   = Entry(master,width="10")
+        Entry_Custom_Width.configure(textvariable=self.svg_width)
+        Label_Width_units =  Label(master,textvariable=self.svg_units, anchor=W)
+        self.trace_id_width = self.svg_width.trace_variable("w", Entry_Width_Callback)
+
+        Label_Height =  Label(master,text="Height", anchor=W)
+        Entry_Custom_Height   = Entry(master,width="10")
+        Entry_Custom_Height.configure(textvariable=self.svg_height)
+        Label_Height_units =  Label(master,textvariable=self.svg_units, anchor=W)
+        self.trace_id_height = self.svg_height.trace_variable("w", Entry_Height_Callback)
+
+        if self.fixed_size == True:
+             Entry_Custom_Width.configure(state="disabled")
+             Entry_Custom_Height.configure(state="disabled")
+        ###########################################################################
+        rn=0
+        Title_Text0.grid(row=rn,column=0,columnspan=5, sticky=W)
+        
+        rn=rn+1
+        Title_Text1.grid(row=rn,column=0,columnspan=5, sticky=W)
+
+        rn=rn+1
+        Radio_SVG_pxpi_96.grid(    row=rn, sticky=W)
+        Label_SVG_pxpi_96.grid(    row=rn, column=1,columnspan=50, sticky=W)
+
+        rn=rn+1
+        Radio_SVG_pxpi_90.grid(    row=rn, sticky=W)
+        Label_SVG_pxpi_90.grid(    row=rn, column=1,columnspan=50, sticky=W)
+        
+        rn=rn+1
+        Radio_SVG_pxpi_72.grid(    row=rn, column=0, sticky=W)
+        Label_SVG_pxpi_72.grid(    row=rn, column=1,columnspan=50, sticky=W)
+        
+        rn=rn+1
+        Radio_Res_Custom.grid(    row=rn, column=0, sticky=W)
+        Entry_Custom_pxpi.grid(    row=rn, column=1, sticky=E)
+        Label_pxpi_units.grid(     row=rn, column=2, sticky=W)
+        
+        rn=rn+1
+        Label_Width.grid(         row=rn, column=0, sticky=E)
+        Entry_Custom_Width.grid(  row=rn, column=1, sticky=E)
+        Label_Width_units.grid(   row=rn, column=2, sticky=W)
+
+        rn=rn+1
+        Label_Height.grid(        row=rn, column=0, sticky=E)
+        Entry_Custom_Height.grid( row=rn, column=1, sticky=E)
+        Label_Height_units.grid(  row=rn, column=2, sticky=W)
+
+        rn=rn+1
+        Bottom_row.grid(row=rn,columnspan=50)
+
+        Radio_SVG_pxpi_96.configure  (variable=self.svg_pxpi)
+        Radio_SVG_pxpi_90.configure  (variable=self.svg_pxpi)
+        Radio_SVG_pxpi_72.configure  (variable=self.svg_pxpi)
+        Radio_Res_Custom.configure  (variable=self.svg_pxpi)
+        self.trace_id_svg_pxpi = self.svg_pxpi.trace_variable("w", SVG_pxpi_callback)
+        ###########################################################################
+    
+    def apply(self):
+        width  = float(self.svg_width.get())/self.scale
+        height = float(self.svg_height.get())/self.scale
+        pxpi    = float(self.other.get())
+        viewbox = [self.minx_pixels, self.miny_pixels, width/25.4*pxpi, height/25.4*pxpi]
+        self.result = pxpi,viewbox
+        return 
+            
 ################################################################################
 #                          Startup Application                                 #
 ################################################################################
@@ -4245,8 +5041,18 @@ app.master.title(title_text)
 app.master.iconname("K40")
 app.master.minsize(800,560) #800x600 min
 
+try:
+    try:
+        app.master.iconbitmap(bitmap="@emblem64")
+    except:
+        app.master.iconbitmap(r'emblem')
+except:
+    pass
+
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)
 debug_message("Debuging is turned on.")
 
+macOS_button_fix_enabled = True
+macOS_button_fix(root)
 root.mainloop()
