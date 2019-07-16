@@ -4181,12 +4181,6 @@ class Application(Frame):
         gen_settings.title('General Settings')
         gen_settings.iconname("General Settings")
 
-        try:
-            gen_settings.iconbitmap(bitmap="@emblem64")
-        except:
-            debug_message(traceback.format_exc())
-            pass
-
         D_Yloc  = 6
         D_dY = 26
         xd_label_L = 12
@@ -4348,12 +4342,6 @@ class Application(Frame):
         raster_settings.resizable(0,0)
         raster_settings.title('Raster Settings')
         raster_settings.iconname("Raster Settings")
-
-        try:
-            raster_settings.iconbitmap(bitmap="@emblem64")
-        except:
-            debug_message(traceback.format_exc())
-            pass
 
         D_Yloc  = 6
         D_dY = 24
@@ -4529,12 +4517,6 @@ class Application(Frame):
         rotary_settings.title('Rotary Settings')
         rotary_settings.iconname("Rotary Settings")
 
-        try:
-            rotary_settings.iconbitmap(bitmap="@emblem64")
-        except:
-            debug_message(traceback.format_exc())
-            pass
-
         D_Yloc  = 6
         D_dY = 30
         xd_label_L = 12
@@ -4595,11 +4577,6 @@ class Application(Frame):
         egv_send.resizable(0,0)
         egv_send.title('EGV Send')
         egv_send.iconname("EGV Send")
-        try:
-            egv_send.iconbitmap(bitmap="@emblem64")
-        except:
-            debug_message(traceback.format_exc())
-            pass
 
         D_Yloc  = 0
         D_dY = 28
@@ -4727,11 +4704,6 @@ class UnitsDialog(tkSimpleDialog.Dialog):
         self.resizable(0,0)
         self.title('Units')
         self.iconname("Units")
-
-        try:
-            self.iconbitmap(bitmap="@emblem64")
-        except:
-            pass
         
         self.uom = StringVar()
         self.uom.set("Millimeters")
@@ -4835,10 +4807,6 @@ class pxpiDialog(tkSimpleDialog.Dialog):
         self.resizable(0,0)
         self.title('SVG Import Scale:')
         self.iconname("SVG Scale")
-        try:
-            self.iconbitmap(bitmap="@emblem64")
-        except:
-            pass
         
         ###########################################################################
         def Entry_custom_Check():
@@ -5040,14 +5008,6 @@ app = Application(root)
 app.master.title(title_text)
 app.master.iconname("K40")
 app.master.minsize(800,560) #800x600 min
-
-try:
-    try:
-        app.master.iconbitmap(bitmap="@emblem64")
-    except:
-        app.master.iconbitmap(r'emblem')
-except:
-    pass
 
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)
