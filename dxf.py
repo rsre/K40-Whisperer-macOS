@@ -698,7 +698,7 @@ class DXF_CLASS:
                     y0     = y1
                     bulge0 = bulge1
 
-            if (e.data["70"]!=0):
+            if (e.data["70"] & 1): #check if bit-code 1 is set for closed polygon
                 try:
                     x1 = e.data["10"][0]
                     y1 = e.data["20"][0]
@@ -885,12 +885,6 @@ class DXF_CLASS:
             self.POLY_FLAG   = -1
             try:
                 TYPE=e.data["70"]
-                #print "TYPE=",TYPE
-                #if (TYPE==0 or TYPE==8):
-                #    pass
-                #elif (TYPE==1):
-                #    self.POLY_CLOSED=1
-
                 if TYPE >=128:
                     #print "#128 = The linetype pattern is generated continuously around the vertices of this polyline."
                     TYPE=TYPE-128
@@ -918,7 +912,6 @@ class DXF_CLASS:
                     TYPE=TYPE-1
             except:
                 pass
-
 
         ########### SEQEND ###########
         elif e.type == "SEQEND":
