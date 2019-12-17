@@ -124,7 +124,7 @@ sed -i.orig "s/app_version = .*/app_version = \"${VERSION}\"/" py2app_setup.py
 
 # Build macOS application
 echo "Build macOS Application..."
-./build_macOS.sh || exit
+./build_macOS.sh -d || exit
 
 # Make new patch file
 echo "Update macOS.patch file..."
@@ -133,11 +133,6 @@ for i in $(grep +++ macOS.patch | cut  -f1|cut -d\  -f2)
 do
     diff -Naur $UPDATE_DIR/$i $i >> macOS-${VERSION}.patch
 done
-
-# Make macOS Disk Image (.dmg) for distribution
-echo "Build macOS Disk Image..."
-rm ./K40-Whisperer-${VERSION}.dmg
-hdiutil create -fs HFS+ -volname K40-Whisperer-${VERSION} -srcfolder ./dist ./K40-Whisperer-${VERSION}.dmg
 
 if [ ! -z ${CLEAN_SOURCE+x} ]
 then

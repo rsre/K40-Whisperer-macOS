@@ -1,11 +1,11 @@
---- K40_Whisperer-0.36_src/k40_whisperer.py	2019-09-06 09:02:06.000000000 -0400
-+++ k40_whisperer.py	2019-09-08 12:49:00.000000000 -0400
-@@ -93,8 +93,33 @@
- 
+--- K40_Whisperer-0.41_src/k40_whisperer.py	2019-12-06 19:54:12.000000000 -0500
++++ k40_whisperer.py	2019-12-09 18:54:44.000000000 -0500
+@@ -102,7 +102,35 @@
+     PYCLIPPER = False
+  
  QUIET = False
- 
--
--    
+-   
++
 +# macOS Mojave and tikinter buttons are blank
 +# https://stackoverflow.com/questions/52529403/button-text-of-tkinter-not-works-in-mojave]
 +# Essentially the fix is to slightly resize the window after it opens.
@@ -32,14 +32,16 @@
 +                win.after(0, make_window_resizer(win))
 +        except:
 +            pass
-     
++ 
  ################################################################################
  class Application(Frame):
-@@ -493,6 +518,14 @@
+     def __init__(self, master):
+@@ -553,6 +581,14 @@
          
          self.Label_GoToX   = Label(self.master,text="X", anchor=CENTER )
          self.Label_GoToY   = Label(self.master,text="Y", anchor=CENTER )
 +
++        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
 +        # Adjust button wrap locations for macOS
 +        self.Open_Button.config(wraplength=20)
 +        self.Reload_Button.config(wraplength=20)
@@ -49,18 +51,18 @@
          ###########################################################################
          # End Left Column #
  
-@@ -3384,7 +3417,10 @@
+@@ -3742,7 +3778,10 @@
                                    U_display))
  
          self.statusbar.configure( bg = 'white' )
 -        
 +
 +        macOS_button_fix(root)
-+   
-     def menu_Mode_Change_Callback(self, varName, index, mode):
-         self.menu_View_Refresh()
- 
-@@ -4173,7 +4209,8 @@
++         
+     def menu_Inside_First_Callback(self, varName, index, mode):
+         if self.GcodeData.ecoords != []:
+             if self.VcutData.sorted == True:
+@@ -4646,7 +4685,8 @@
          xd_label_L = 12
  
          w_label=150
@@ -69,16 +71,16 @@
          w_units=45
          xd_entry_L=xd_label_L+w_label+10
          xd_units_L=xd_entry_L+w_entry+5
-@@ -4315,6 +4352,9 @@
-         self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
-         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
+@@ -4876,6 +4916,9 @@
+         xd_entry_L=xd_label_L+w_label+10
+         xd_units_L=xd_entry_L+w_entry+5
  
 +        macOS_button_fix(gen_settings)
 +
  
-     ################################################################################
-     #                          Raster Settings Window                              #
-@@ -4586,7 +4626,8 @@
+ 
+         D_Yloc=D_Yloc+D_dY
+@@ -5200,7 +5243,8 @@
          xd_label_L = 12
  
          w_label=150
@@ -87,7 +89,7 @@
          w_units=35
          xd_entry_L=xd_label_L+w_label+10
          xd_units_L=xd_entry_L+w_entry+5
-@@ -4632,6 +4673,9 @@
+@@ -5246,6 +5290,9 @@
              
          self.EGV_Send = Button(egv_send,text="Send EGV Data",command=Close_and_Send_Click)
          self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=30, anchor="w")
@@ -96,7 +98,7 @@
          ################################################################################
          
          
-@@ -4729,6 +4773,8 @@
+@@ -5343,6 +5390,8 @@
  
      def apply(self):
          self.result = self.uom.get()
@@ -104,9 +106,9 @@
          return 
  
  
-@@ -5030,4 +5076,7 @@
-     message_box("K40 Whisperer",LOAD_MSG)
- debug_message("Debuging is turned on.")
+@@ -5670,4 +5719,7 @@
+         app.master.geometry("480x320")
+ 
  
 +macOS_button_fix_enabled = True
 +macOS_button_fix(root)
