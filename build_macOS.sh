@@ -128,7 +128,7 @@ ${PIP} install -r requirements.txt
 echo "Build macOS Application Bundle..."
 if [ "$PYINSTALLER" = true ]
 then
-	${PYTHON} -OO -m PyInstaller -y --clean k40_whisperer.spec
+	${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
 	rm -rf dist/k40_whisperer
 else
 	${PYTHON} py2app_setup.py py2app --packages=PIL
