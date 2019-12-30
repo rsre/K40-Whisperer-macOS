@@ -109,7 +109,7 @@ QUIET = False
 # Essentially the fix is to slightly resize the window after it opens.
 macOS_button_fix_enabled = False
 
-def macOS_button_fix(win):
+def macOS_button_fix(window):
     def make_window_resizer(w):
         def window_resizer():
             a = w.winfo_geometry().split('+')[0]
@@ -126,8 +126,8 @@ def macOS_button_fix(win):
             v, _, _ = platform.mac_ver()
             v = float('.'.join(v.split('.')[:2]))
             if v >= 10.14:
-                win.update()
-                win.after(0, make_window_resizer(win))
+                window.update()
+                window.after(0, make_window_resizer(window))
         except:
             pass
 
@@ -4754,7 +4754,6 @@ class Application(Frame):
         gen_settings = Toplevel(width=gen_width, height=560) #460+75)
         gen_settings.grab_set() # Use grab_set to prevent user input in the main window
         gen_settings.focus_set()
-        gen_settings.resizable(0,0)
         gen_settings.title('General Settings')
         gen_settings.iconname("General Settings")
 
@@ -4762,8 +4761,8 @@ class Application(Frame):
         D_dY = 26
         xd_label_L = 12
 
-        w_label=150
-        w_entry=100
+        w_label=155
+        w_entry=60
         w_units=45
         xd_entry_L=xd_label_L+w_label+10
         xd_units_L=xd_entry_L+w_entry+5
@@ -4963,6 +4962,8 @@ class Application(Frame):
         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.Set_Input_States_BATCH()
+        macOS_button_fix(gen_settings)
+        gen_settings.resizable(0,0)
 
     ################################################################################
     #                          Raster Settings Window                              #
@@ -4973,7 +4974,6 @@ class Application(Frame):
         raster_settings = Toplevel(width=Wset, height=Hset)
         raster_settings.grab_set() # Use grab_set to prevent user input in the main window
         raster_settings.focus_set()
-        raster_settings.resizable(0,0)
         raster_settings.title('Raster Settings')
         raster_settings.iconname("Raster Settings")
 
@@ -4986,9 +4986,6 @@ class Application(Frame):
         w_units=35
         xd_entry_L=xd_label_L+w_label+10
         xd_units_L=xd_entry_L+w_entry+5
-
-        macOS_button_fix(gen_settings)
-
 
 
         D_Yloc=D_Yloc+D_dY
@@ -5141,6 +5138,8 @@ class Application(Frame):
         #if DEBUG and show_unsharp:
         #    self.Set_Input_States_Unsharp()
 
+        macOS_button_fix(raster_settings)
+        raster_settings.resizable(0,0)
 
     ################################################################################
     #                         Rotary Settings Window                               #
@@ -5149,7 +5148,6 @@ class Application(Frame):
         rotary_settings = Toplevel(width=350, height=175)
         rotary_settings.grab_set() # Use grab_set to prevent user input in the main window
         rotary_settings.focus_set()
-        rotary_settings.resizable(0,0)
         rotary_settings.title('Rotary Settings')
         rotary_settings.iconname("Rotary Settings")
 
@@ -5203,6 +5201,10 @@ class Application(Frame):
 
         self.Set_Input_States_Rotary()
 
+        macOS_button_fix(rotary_settings)
+        rotary_settings.resizable(0,0)
+
+
     ################################################################################
     #                            Trace Send Window                                 #
     ################################################################################
@@ -5211,7 +5213,6 @@ class Application(Frame):
         trace_window = Toplevel(width=350, height=180)
         self.trace_window=trace_window
         trace_window.grab_set() # Use grab_set to prevent user input in the main window during calculations
-        trace_window.resizable(0,0)
         trace_window.title('Trace Boundary')
         trace_window.iconname("Trace Boundary")
 
@@ -5279,6 +5280,10 @@ class Application(Frame):
 
         self.Trace_Close = Button(trace_window,text="Cancel",command=Close_Click)
         self.Trace_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+
+        macOS_button_fix(trace_window)
+        trace_window.resizable(0,0)
+
         ################################################################################
 
     ################################################################################
@@ -5288,7 +5293,6 @@ class Application(Frame):
         
         egv_send = Toplevel(width=400, height=180)
         egv_send.grab_set() # Use grab_set to prevent user input in the main window during calculations
-        egv_send.resizable(0,0)
         egv_send.title('EGV Send')
         egv_send.iconname("EGV Send")
 
@@ -5297,7 +5301,7 @@ class Application(Frame):
         xd_label_L = 12
 
         w_label=150
-        w_entry=50
+        w_entry=40
         w_units=35
         xd_entry_L=xd_label_L+w_label+10
         xd_units_L=xd_entry_L+w_entry+5
@@ -5344,7 +5348,8 @@ class Application(Frame):
         self.EGV_Send = Button(egv_send,text="Send EGV Data",command=Close_and_Send_Click)
         self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=30, anchor="w")
 
-        macOS_button_fix(gen_settings)
+        macOS_button_fix(egv_send)
+        egv_send.resizable(0,0)
         ################################################################################
         
         
@@ -5437,7 +5442,7 @@ class UnitsDialog(tkSimpleDialog.Dialog):
 
     def apply(self):
         self.result = self.uom.get()
-        macOS_button_fix(gen_settings)
+        #macOS_button_fix(gen_settings)
         return 
 
 
