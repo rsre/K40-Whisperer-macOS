@@ -135,7 +135,7 @@ else
 fi
 
 echo "Copy support files to dist..."
-cp k40_whisperer_test.svg Change_Log.txt gpl-3.0.txt README_MacOS.md dist
+cp k40_whisperer_test.svg Change_Log.txt gpl-3.0.txt dist
 
 # Clean up the build directory when we are done.
 echo "Clean up build artifacts..."
