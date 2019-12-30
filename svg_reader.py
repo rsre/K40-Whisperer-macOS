@@ -135,6 +135,7 @@ class SVG_READER(inkex.Effect):
         self.inkscape_exe_list.append("/usr/bin/inkscape")
         self.inkscape_exe_list.append("/usr/local/bin/inkscape")
         self.inkscape_exe_list.append("/Applications/Inkscape.app/Contents/Resources/bin/inkscape")
+        self.inkscape_exe_list.append("/Applications/Inkscape.app/Contents/MacOS/Inkscape")
         self.inkscape_exe = None
         self.lines =[]
         self.Cut_Type = {}
