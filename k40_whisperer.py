@@ -1885,6 +1885,7 @@ class Application(Frame):
         
     def Open_EGV(self,filemname,n_passes=1):
         self.stop[0]=False
+        EGV_data=[]
         value1 = ""
         value2 = ""
         value3 = ""
