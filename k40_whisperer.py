@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.42'
+version = '0.43'
 title_text = app_name+" V"+version
 
 import sys
@@ -1872,7 +1872,6 @@ class Application(Frame):
 
 
     def menu_File_Open_EGV(self):
-        self.stop[0]=False
         init_dir = os.path.dirname(self.DESIGN_FILE)
         if ( not os.path.isdir(init_dir) ):
             init_dir = self.HOME_DIR
@@ -1883,12 +1882,9 @@ class Application(Frame):
             self.resetPath()
             self.DESIGN_FILE = fileselect
             self.EGV_Send_Window(fileselect)
-        self.stop[0]=True
-        #self.Finish_Job()
         
     def Open_EGV(self,filemname,n_passes=1):
-        pass
-        EGV_data=[]
+        self.stop[0]=False
         value1 = ""
         value2 = ""
         value3 = ""
@@ -1969,6 +1965,7 @@ class Application(Frame):
         dxmils = -(x_end_mils - x_start_mils)
         dymils =   y_end_mils - y_start_mils
         self.Send_Rapid_Move(dxmils,dxmils)
+        self.stop[0]=True
 
         
     def Open_SVG(self,filemname):
