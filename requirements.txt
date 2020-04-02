@@ -2,3 +2,4 @@ lxml
 pyusb
 pillow
 pyinstaller
+setuptools<45.0.0
