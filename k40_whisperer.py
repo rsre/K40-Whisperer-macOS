@@ -2,7 +2,7 @@
 """
     K40 Whisperer
 
-    Copyright (C) <2017-2019>  <Scorch>
+    Copyright (C) <2017-2020>  <Scorch>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.43'
+version = '0.45'
 title_text = app_name+" V"+version
 
 import sys
@@ -3713,8 +3713,14 @@ class Application(Frame):
         line1 = "Sending data to the laser from K40 Whisperer is currently Paused."
         line2 = "Press \"OK\" to abort any jobs currently running."
         line3 = "Press \"Cancel\" to resume."
+        if self.k40 != None:
+            self.k40.pause_un_pause()
+            
         if message_ask_ok_cancel("Stop Laser Job.", "%s\n\n%s\n%s" %(line1,line2,line3)):
             self.stop[0]=True
+        else:
+            if self.k40 != None:
+                self.k40.pause_un_pause()
 
     def Hide_Advanced(self,event=None):
         self.advanced.set(0)
@@ -3846,7 +3852,7 @@ class Application(Frame):
         self.statusbar.configure( bg = 'white' )
 
         macOS_button_fix(root)
-         
+
     def menu_Inside_First_Callback(self, varName, index, mode):
         if self.GcodeData.ecoords != []:
             if self.VcutData.sorted == True:
@@ -4752,6 +4758,7 @@ class Application(Frame):
         gen_settings = Toplevel(width=gen_width, height=560) #460+75)
         gen_settings.grab_set() # Use grab_set to prevent user input in the main window
         gen_settings.focus_set()
+        gen_settings.resizable(0,0)
         gen_settings.title('General Settings')
         gen_settings.iconname("General Settings")
 
@@ -4972,6 +4979,7 @@ class Application(Frame):
         raster_settings = Toplevel(width=Wset, height=Hset)
         raster_settings.grab_set() # Use grab_set to prevent user input in the main window
         raster_settings.focus_set()
+        raster_settings.resizable(0,0)
         raster_settings.title('Raster Settings')
         raster_settings.iconname("Raster Settings")
 
@@ -5146,6 +5154,7 @@ class Application(Frame):
         rotary_settings = Toplevel(width=350, height=175)
         rotary_settings.grab_set() # Use grab_set to prevent user input in the main window
         rotary_settings.focus_set()
+        rotary_settings.resizable(0,0)
         rotary_settings.title('Rotary Settings')
         rotary_settings.iconname("Rotary Settings")
 
@@ -5211,6 +5220,7 @@ class Application(Frame):
         trace_window = Toplevel(width=350, height=180)
         self.trace_window=trace_window
         trace_window.grab_set() # Use grab_set to prevent user input in the main window during calculations
+        trace_window.resizable(0,0)
         trace_window.title('Trace Boundary')
         trace_window.iconname("Trace Boundary")
 
@@ -5291,6 +5301,7 @@ class Application(Frame):
         
         egv_send = Toplevel(width=400, height=180)
         egv_send.grab_set() # Use grab_set to prevent user input in the main window during calculations
+        egv_send.resizable(0,0)
         egv_send.title('EGV Send')
         egv_send.iconname("EGV Send")
 
@@ -5440,7 +5451,6 @@ class UnitsDialog(tkSimpleDialog.Dialog):
 
     def apply(self):
         self.result = self.uom.get()
-        #macOS_button_fix(gen_settings)
         return 
 
 
@@ -5634,13 +5644,13 @@ class pxpiDialog(tkSimpleDialog.Dialog):
         Title_Text0 = Label(master, text=t0+t1+t2, anchor=W)
         Title_Text1 = Label(master, text=t3, anchor=W)
         
-        Radio_SVG_pxpi_96   = Radiobutton(master,text=" 96 px/in", value="96")
+        Radio_SVG_pxpi_96   = Radiobutton(master,text=" 96 units/in", value="96")
         Label_SVG_pxpi_96   = Label(master,text="(File saved with Inkscape v0.92 or newer)", anchor=W)
         
-        Radio_SVG_pxpi_90   = Radiobutton(master,text=" 90 px/in", value="90")
+        Radio_SVG_pxpi_90   = Radiobutton(master,text=" 90 units/in", value="90")
         Label_SVG_pxpi_90   = Label(master,text="(File saved with Inkscape v0.91 or older)", anchor=W)
         
-        Radio_SVG_pxpi_72   = Radiobutton(master,text=" 72 px/in", value="72")
+        Radio_SVG_pxpi_72   = Radiobutton(master,text=" 72 units/in", value="72")
         Label_SVG_pxpi_72   = Label(master,text="(File saved with Adobe Illustrator)", anchor=W)
 
         Radio_Res_Custom = Radiobutton(master,text=" Custom:", value="custom")
@@ -5649,7 +5659,7 @@ class pxpiDialog(tkSimpleDialog.Dialog):
 
         Entry_Custom_pxpi   = Entry(master,width="10")
         Entry_Custom_pxpi.configure(textvariable=self.other)
-        Label_pxpi_units =  Label(master,text="px/in", anchor=W)
+        Label_pxpi_units =  Label(master,text="units/in", anchor=W)
         self.trace_id_pxpi = self.other.trace_variable("w", Entry_custom_Callback)
 
         Label_Width =  Label(master,text="Width", anchor=W)

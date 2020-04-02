@@ -10,7 +10,7 @@ import sys
 from setuptools import setup
 
 app_name = 'K40 Whisperer'
-app_version = "0.42"
+app_version = "0.45"
 app_copyright = u'Copyright © 2017-2019, Scorch Works, GNU General Public License'
 main_script = 'k40_whisperer.py'
 url = 'https://github.com/rsre/K40-Whisperer-macOS'
