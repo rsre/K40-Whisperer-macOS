@@ -56,9 +56,9 @@ brew cask install xquartz
 brew cask install inkscape
 brew install pyenv
 
-# Install Python 3.7.2 with pyenv and set it as the default Python
-PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.7.2
-pyenv global 3.7.2
+# Install Python 3.7.7 with pyenv and set it as the default Python
+PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.7.7
+pyenv global 3.7.7
 rehash
 ```
 
