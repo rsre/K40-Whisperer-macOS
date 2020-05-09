@@ -3,3 +3,4 @@ pyusb
 pillow
 pyinstaller
 setuptools<45.0.0
+pyclipper
