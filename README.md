@@ -155,7 +155,7 @@ git clone https://github.com/stephenhouser/k40_whisperer.git
 cd k40_whisperer
 
 # Download, apply patches, build the application
-./update_macOS.sh https://www.scorchworks.com/K40whisperer/K40_Whisperer-0.45_src.zip
+./update_macOS.sh https://www.scorchworks.com/K40whisperer/K40_Whisperer-0.49_src.zip
 
 # Test/Fix/Test...(needs some work)
 ...
@@ -163,11 +163,11 @@ open ./dist/K40\ Whisperer.app
 ...
 
 # Move newly generated patch file into place
-mv macOS-0.45.patch macOS.patch
+mv macOS-0.49.patch macOS.patch
 
 # Commit and push back to GitHub
-git commit -a -m"Update to v0.45"
-git tag v0.45
+git commit -a -m"Update to v0.49"
+git tag v0.49
 git push --follow-tags
 ```
 
