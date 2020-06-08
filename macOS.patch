@@ -1,12 +1,22 @@
---- K40_Whisperer-0.49_src/k40_whisperer.py	2020-05-07 21:36:44.000000000 -0400
-+++ k40_whisperer.py	2020-05-08 13:18:34.000000000 -0400
-@@ -107,7 +107,35 @@
+--- /K40_Whisperer-0.51_src/k40_whisperer.py	2020-05-29 22:14:04.000000000 +0200
++++ /k40-whisperer-macOS/k40_whisperer.py	2020-06-08 18:39:16.000000000 +0200
+@@ -17,8 +17,9 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ """
++app_name = "K40 Whisperer"
+ version = '0.51'
+-title_text = "K40 Whisperer V"+version
++title_text = app_name+" V"+version
+ 
+ import sys
+ from math import *
+@@ -107,7 +108,44 @@
      pass
  
  QUIET = False
 -   
 +
-+# macOS Patch - Stephen Houser (stephenhouser@gmail.com)
 +# macOS Mojave and tikinter buttons are blank
 +# https://stackoverflow.com/questions/52529403/button-text-of-tkinter-not-works-in-mojave]
 +# Essentially the fix is to slightly resize the window after it opens.
@@ -33,16 +43,64 @@
 +                win.after(0, make_window_resizer(win))
 +        except:
 +            pass
-+ 
++
++def resource_path(relative_path):
++    """ Get absolute path to resource, works for dev and for PyInstaller """
++    try:
++        # PyInstaller creates a temp folder and stores path in _MEIPASS
++        base_path = sys._MEIPASS
++    except Exception:
++        base_path = os.path.abspath(".")
++
++    return os.path.join(base_path, relative_path)
++
  ################################################################################
  class Application(Frame):
      def __init__(self, master):
-@@ -561,6 +589,14 @@
+@@ -121,7 +159,6 @@
+         self.y = -1
+         self.createWidgets()
+         self.micro = False
+-        
+ 
+     def resetPath(self):
+         self.RengData  = ECoord()
+@@ -510,21 +547,21 @@
+         self.Stop_Button       = Button(self.master,text="Pause/Stop",      command=self.Stop)
+ 
+         try:
+-            self.left_image  = self.Imaging_Free(Image.open("left.png"),bg=None)
+-            self.right_image = self.Imaging_Free(Image.open("right.png"),bg=None)
+-            self.up_image    = self.Imaging_Free(Image.open("up.png"),bg=None)
+-            self.down_image  = self.Imaging_Free(Image.open("down.png"),bg=None)
++            self.left_image  = self.Imaging_Free(Image.open(resource_path("left.png")),bg=None)
++            self.right_image = self.Imaging_Free(Image.open(resource_path("right.png")),bg=None)
++            self.up_image    = self.Imaging_Free(Image.open(resource_path("up.png")),bg=None)
++            self.down_image  = self.Imaging_Free(Image.open(resource_path("down.png")),bg=None)
+             
+             self.Right_Button   = Button(self.master,image=self.right_image, command=self.Move_Right)
+             self.Left_Button    = Button(self.master,image=self.left_image,  command=self.Move_Left)
+             self.Up_Button      = Button(self.master,image=self.up_image,    command=self.Move_Up)
+             self.Down_Button    = Button(self.master,image=self.down_image,  command=self.Move_Down)
+ 
+-            self.UL_image  = self.Imaging_Free(Image.open("UL.png"),bg=None)
+-            self.UR_image  = self.Imaging_Free(Image.open("UR.png"),bg=None)
+-            self.LR_image  = self.Imaging_Free(Image.open("LR.png"),bg=None)
+-            self.LL_image  = self.Imaging_Free(Image.open("LL.png"),bg=None)
+-            self.CC_image  = self.Imaging_Free(Image.open("CC.png"),bg=None)
++            self.UL_image  = self.Imaging_Free(Image.open(resource_path("UL.png")),bg=None)
++            self.UR_image  = self.Imaging_Free(Image.open(resource_path("UR.png")),bg=None)
++            self.LR_image  = self.Imaging_Free(Image.open(resource_path("LR.png")),bg=None)
++            self.LL_image  = self.Imaging_Free(Image.open(resource_path("LL.png")),bg=None)
++            self.CC_image  = self.Imaging_Free(Image.open(resource_path("CC.png")),bg=None)
+             
+             self.UL_Button = Button(self.master,image=self.UL_image, command=self.Move_UL)
+             self.UR_Button = Button(self.master,image=self.UR_image, command=self.Move_UR)
+@@ -562,6 +599,13 @@
          
          self.Label_GoToX   = Label(self.master,text="X", anchor=CENTER )
          self.Label_GoToY   = Label(self.master,text="Y", anchor=CENTER )
 +
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
 +        # Adjust button wrap locations for macOS
 +        self.Open_Button.config(wraplength=20)
 +        self.Reload_Button.config(wraplength=20)
@@ -52,72 +110,249 @@
          ###########################################################################
          # End Left Column #
  
-@@ -3849,7 +3885,10 @@
+@@ -666,8 +710,24 @@
+         # Make Menu Bar
+         self.menuBar = Menu(self.master, relief = "raised", bd=2)
+ 
+-        
+-
++        # Apple menu (about and preferences)
++        app_menu = Menu(self.menuBar, name='apple')
++        self.menuBar.add_cascade(menu=app_menu)
++
++        app_menu.add_command(label='About ' + app_name, command=self.do_about_dialog)
++        app_menu.add_separator()
++
++        tk_version = root.tk.call('info', 'patchlevel')
++        tk_version = tk_version.replace('.', '')
++        tk_version = tk_version[0:2]
++        tk_version = int(tk_version)
++
++        if tk_version < 85:
++            app_menu.add("command", label = "Preferences...", command = self.GEN_Settings_Window)
++        else:
++            # Tk 8.5 and up provides the Preferences menu item
++            root.createcommand('tk::mac::ShowPreferences', self.GEN_Settings_Window)
++        ## End apple menu
+ 
+         top_File = Menu(self.menuBar, tearoff=0)
+         top_File.add("command", label = "Save Settings File", command = self.menu_File_Save)
+@@ -3820,7 +3880,9 @@
                                    U_display))
  
          self.statusbar.configure( bg = 'white' )
 -        
 +
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
 +        macOS_button_fix(root)
-+         
++
      def menu_Inside_First_Callback(self, varName, index, mode):
          if self.GcodeData.ecoords != []:
              if self.VcutData.sorted == True:
-@@ -4754,7 +4793,8 @@
+@@ -3841,7 +3903,23 @@
+         self.refreshTime()
+         self.set_gui("normal")
+         self.menu_View_Refresh()
+-        
++
++    def do_about_dialog(self):
++        tk_version = root.tk.call('info', 'patchlevel')
++        about = "K40 Whisperer Version %s\n\n" %(version)
++        about = about + "By Scorch.\n"
++        about = about + "\163\143\157\162\143\150\100\163\143\157\162"
++        about = about + "\143\150\167\157\162\153\163\056\143\157\155\n"
++        about = about + "https://www.scorchworks.com/\n\n"
++        about = about + "Packed for macOS by Ricardo Sanz\n"
++        about = about + "https://ricardosa.nz/\n\n"
++        about = about + "Tk version: " + tk_version + "\n\n"
++        try:
++            python_version = "%d.%d.%d" %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)
++        except:
++            python_version = ""
++        about = about + "Python "+python_version+" (%d bit)" %(struct.calcsize("P") * 8)
++        tkinter.messagebox.showinfo("About K40 Whisperer",about)
+ 
+     def menu_Help_About(self):
+         
+@@ -3855,7 +3933,7 @@
+         except:
+             python_version = ""
+         about = about + "Python "+python_version+" (%d bit)" %(struct.calcsize("P") * 8)
+-        message_box("About k40 Whisperer",about)
++        message_box("About K40 Whisperer",about)
+ 
+     def menu_Help_Web(self):
+         webbrowser.open_new(r"https://www.scorchworks.com/K40whisperer/k40whisperer.html")
+@@ -4728,18 +4806,12 @@
+         gen_settings.title('General Settings')
+         gen_settings.iconname("General Settings")
+ 
+-        try:
+-            gen_settings.iconbitmap(bitmap="@emblem64")
+-        except:
+-            debug_message(traceback.format_exc())
+-            pass
+-
+         D_Yloc  = 6
+         D_dY = 26
          xd_label_L = 12
  
-         w_label=150
+-        w_label=150
 -        w_entry=40
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
-+        w_entry=100
++        w_label=155
++        w_entry=60
          w_units=45
          xd_entry_L=xd_label_L+w_label+10
          xd_units_L=xd_entry_L+w_entry+5
-@@ -4984,6 +5024,9 @@
-         xd_entry_L=xd_label_L+w_label+10
-         xd_units_L=xd_entry_L+w_entry+5
+@@ -4939,6 +5011,8 @@
+         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
  
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
+         self.Set_Input_States_BATCH()
 +        macOS_button_fix(gen_settings)
-+
++        gen_settings.resizable(0,0)
  
+     ################################################################################
+     #                          Raster Settings Window                              #
+@@ -4953,12 +5027,6 @@
+         raster_settings.title('Raster Settings')
+         raster_settings.iconname("Raster Settings")
  
-         D_Yloc=D_Yloc+D_dY
-@@ -5308,7 +5351,8 @@
+-        try:
+-            raster_settings.iconbitmap(bitmap="@emblem64")
+-        except:
+-            debug_message(traceback.format_exc())
+-            pass
+-
+         D_Yloc  = 6
+         D_dY = 24
          xd_label_L = 12
- 
-         w_label=150
--        w_entry=40
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
-+        w_entry=50
-         w_units=35
-         xd_entry_L=xd_label_L+w_label+10
+@@ -4970,7 +5038,6 @@
          xd_units_L=xd_entry_L+w_entry+5
-@@ -5354,6 +5398,9 @@
+ 
+ 
+-
+         D_Yloc=D_Yloc+D_dY
+         self.Label_Rstep   = Label(raster_settings,text="Scanline Step", anchor=CENTER )
+         self.Label_Rstep.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+@@ -5121,6 +5188,8 @@
+         #if DEBUG and show_unsharp:
+         #    self.Set_Input_States_Unsharp()
+ 
++        macOS_button_fix(raster_settings)
++        raster_settings.resizable(0,0)
+ 
+     ################################################################################
+     #                         Rotary Settings Window                               #
+@@ -5133,12 +5202,6 @@
+         rotary_settings.title('Rotary Settings')
+         rotary_settings.iconname("Rotary Settings")
+ 
+-        try:
+-            rotary_settings.iconbitmap(bitmap="@emblem64")
+-        except:
+-            debug_message(traceback.format_exc())
+-            pass
+-
+         D_Yloc  = 6
+         D_dY = 30
+         xd_label_L = 12
+@@ -5189,6 +5252,10 @@
+ 
+         self.Set_Input_States_Rotary()
+ 
++        macOS_button_fix(rotary_settings)
++        rotary_settings.resizable(0,0)
++
++
+     ################################################################################
+     #                            Trace Send Window                                 #
+     ################################################################################
+@@ -5202,11 +5269,6 @@
+         trace_window.resizable(0,0)
+         trace_window.title('Trace Boundary')
+         trace_window.iconname("Trace Boundary")
+-        try:
+-            trace_window.iconbitmap(bitmap="@emblem64")
+-        except:
+-            debug_message(traceback.format_exc())
+-            pass
+ 
+         def Close_Click():
+             win_id=self.grab_current()
+@@ -5272,6 +5334,10 @@
+ 
+         self.Trace_Close = Button(trace_window,text="Cancel",command=Close_Click)
+         self.Trace_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
++
++        macOS_button_fix(trace_window)
++        trace_window.resizable(0,0)
++
+         ################################################################################
+ 
+     ################################################################################
+@@ -5284,11 +5350,6 @@
+         egv_send.resizable(0,0)
+         egv_send.title('EGV Send')
+         egv_send.iconname("EGV Send")
+-        try:
+-            egv_send.iconbitmap(bitmap="@emblem64")
+-        except:
+-            debug_message(traceback.format_exc())
+-            pass
+ 
+         D_Yloc  = 0
+         D_dY = 28
+@@ -5341,6 +5402,9 @@
              
          self.EGV_Send = Button(egv_send,text="Send EGV Data",command=Close_and_Send_Click)
          self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=30, anchor="w")
 +
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
-+        macOS_button_fix(gen_settings)
++        macOS_button_fix(egv_send)
++        egv_send.resizable(0,0)
          ################################################################################
          
          
-@@ -5451,6 +5498,8 @@
+@@ -5414,11 +5478,6 @@
+         self.resizable(0,0)
+         self.title('Units')
+         self.iconname("Units")
+-
+-        try:
+-            self.iconbitmap(bitmap="@emblem64")
+-        except:
+-            pass
+         
+         self.uom = StringVar()
+         self.uom.set("Millimeters")
+@@ -5524,10 +5583,6 @@
+         self.resizable(0,0)
+         self.title('SVG Import Scale:')
+         self.iconname("SVG Scale")
+-        try:
+-            self.iconbitmap(bitmap="@emblem64")
+-        except:
+-            pass
+         
+         ###########################################################################
+         def Entry_custom_Check():
+@@ -5731,14 +5786,6 @@
+ app.master.minsize(800,560)
+ app.master.geometry("800x560")
  
-     def apply(self):
-         self.result = self.uom.get()
-+        # macOS Patch - Stephen Houser (stephenhouser@gmail.com)
-+        macOS_button_fix(gen_settings)
-         return 
- 
- 
-@@ -5778,4 +5827,7 @@
+-try:
+-    try:
+-        app.master.iconbitmap(r'emblem')
+-    except:
+-        app.master.iconbitmap(bitmap="@emblem64")
+-except:
+-    pass
+-
+ if LOAD_MSG != "":
+     message_box("K40 Whisperer",LOAD_MSG)
+ debug_message("Debuging is turned on.")
+@@ -5765,4 +5812,6 @@
          app.master.geometry("480x320")
  
  
-+# macOS Patch - Stephen Houser (stephenhouser@gmail.com)
 +macOS_button_fix_enabled = True
 +macOS_button_fix(root)
  root.mainloop()

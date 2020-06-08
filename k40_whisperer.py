@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.49'
+version = '0.51'
 title_text = app_name+" V"+version
 
 import sys
@@ -433,6 +433,7 @@ class Application(Frame):
         self.laserX    = 0.0
         self.laserY    = 0.0
         self.PlotScale = 1.0
+        self.GUI_Disabled = False
 
         # PAN and ZOOM STUFF
         self.panx = 0
@@ -1758,6 +1759,8 @@ class Application(Frame):
 
 
     def menu_Reload_Design(self,event=None):
+        if self.GUI_Disabled:
+            return
         file_full = self.DESIGN_FILE
         file_name = os.path.basename(file_full)
         if ( os.path.isfile(file_full) ):
@@ -1786,6 +1789,8 @@ class Application(Frame):
         
 
     def menu_File_Open_Design(self,event=None):
+        if self.GUI_Disabled:
+            return
         init_dir = os.path.dirname(self.DESIGN_FILE)
         if ( not os.path.isdir(init_dir) ):
             init_dir = self.HOME_DIR
@@ -2324,6 +2329,12 @@ class Application(Frame):
         return_value =  StringVar()
         return_value.set("none")
 
+        try:
+            error_report.iconbitmap(bitmap="@emblem64")
+        except:
+            debug_message(traceback.format_exc())
+            pass
+
         def Close_Click(event):
             return_value.set("close")
             error_report.destroy()
@@ -2774,6 +2785,8 @@ class Application(Frame):
             pass
 
     def Move_Arbitrary(self,MoveX,MoveY,dummy=None):
+        if self.GUI_Disabled:
+            return
         if self.HomeUR.get():
             DX = -MoveX
         else:
@@ -2784,6 +2797,8 @@ class Application(Frame):
         self.move_head_window_temporary([NewXpos,NewYpos])
 
     def Move_Arb_Step(self,dx,dy):
+        if self.GUI_Disabled:
+            return
         if self.units.get()=="in":
             dx_inches = round(dx*1000)
             dy_inches = round(dy*1000)
@@ -2827,6 +2842,8 @@ class Application(Frame):
         self.Rapid_Move( 0,-JOG_STEP )
 
     def Rapid_Move(self,dx,dy):
+        if self.GUI_Disabled:
+            return
         if self.units.get()=="in":
             dx_inches = round(dx,3)
             dy_inches = round(dy,3)
@@ -2904,10 +2921,11 @@ class Application(Frame):
         return True
 
     def set_gui(self,new_state="normal"):
-        #if new_state=="normal":
-        #    self.stop[0]=True
-        #else:
-        #    self.stop[0]=False
+        if new_state=="normal":
+            self.GUI_Disabled=False
+        else:
+            self.GUI_Disabled=True
+
         try:
             self.menuBar.entryconfigure("File"    , state=new_state)
             self.menuBar.entryconfigure("View"    , state=new_state)
@@ -2929,42 +2947,25 @@ class Application(Frame):
                 debug_message(traceback.format_exc())
 
     def Vector_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Vector Cut: Processing Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Vector Cut: Processing Vector Data.")
         if self.VcutData.ecoords!=[]:
             self.send_data("Vector_Cut", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data to cut")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
         
     def Vector_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Vector Engrave: Processing Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Vector Engrave: Processing Vector Data.")
         if self.VengData.ecoords!=[]:
             self.send_data("Vector_Eng", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data to engrave")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
 
     def Trace_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Boundary Trace: Processing Data.")
-        self.master.update()
-
+        self.Prepare_for_laser_run("Boundary Trace: Processing Data.")
         self.trace_coords = self.make_trace_path()
 
         if self.trace_coords!=[]:
@@ -2973,15 +2974,9 @@ class Application(Frame):
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No trace data to follow")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
 
     def Raster_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Raster Engraving: Processing Image Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Raster Engraving: Processing Image Data.")
         try:
             self.make_raster_coords()
             if self.RengData.ecoords!=[]:
@@ -3005,16 +3000,10 @@ class Application(Frame):
             self.statusbar.configure( bg = 'red' )
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
-        #self.set_gui("normal")
-        #self.stop[0]=True
         self.Finish_Job()
 
     def Raster_Vector_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Raster Engraving: Processing Image and Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Raster Engraving: Processing Image and Vector Data.")
         try:
             self.make_raster_coords()
             if self.RengData.ecoords!=[] or self.VengData.ecoords!=[]:
@@ -3030,32 +3019,18 @@ class Application(Frame):
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
-
 
     def Vector_Eng_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Vector Cut: Processing Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Vector Cut: Processing Vector Data.")
         if self.VcutData.ecoords!=[] or self.VengData.ecoords!=[]:
             self.send_data("Vector_Eng+Vector_Cut", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data.")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
-
         
     def Raster_Vector_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Raster Engraving: Processing Image and Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Raster Engraving: Processing Image and Vector Data.")
         try:
             self.make_raster_coords()
             if self.RengData.ecoords!=[] or self.VengData.ecoords!=[] or self.VcutData.ecoords!=[]:
@@ -3070,25 +3045,24 @@ class Application(Frame):
             self.statusbar.configure( bg = 'red' )
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
-        #self.set_gui("normal")
-        #self.stop[0]=True
         self.Finish_Job()
         
-        
     def Gcode_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("G Code Cutting.")
-        self.master.update()
+        self.Prepare_for_laser_run("G Code Cutting.")
         if self.GcodeData.ecoords!=[]:
             self.send_data("Gcode_Cut", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No g-code data to cut")
-        #self.set_gui("normal")
-        #self.stop[0]=True
         self.Finish_Job()
+
+    def Prepare_for_laser_run(self,msg):
+        self.stop[0]=False
+        self.move_head_window_temporary([0,0])
+        self.set_gui("disabled")
+        self.statusbar.configure( bg = 'green' )
+        self.statusMessage.set(msg)
+        self.master.update()
 
     def Finish_Job(self, event=None):
         self.set_gui("normal")
@@ -3272,7 +3246,7 @@ class Application(Frame):
         return inside
 
     def optimize_paths(self,ecoords,inside_check=True):
-        order_out = self.Sort_Paths(ecoords)
+        order_out = self.Sort_Paths(ecoords)    
         lastx=-999
         lasty=-999
         Acc=0.004
@@ -3449,8 +3423,6 @@ class Application(Frame):
                 xmin,xmax,ymin,ymax = 0.0,0.0,0.0,0.0
             else:
                 xmin,xmax,ymin,ymax = self.Get_Design_Bounds()
-                
-            self.move_head_window_temporary([0,0])
                         
             startx = xmin
             starty = ymax
@@ -3734,6 +3706,8 @@ class Application(Frame):
         self.statusMessage.set("Data saved to: %s" %(fname))
         
     def Home(self, event=None):
+        if self.GUI_Disabled:
+            return
         if self.k40 != None:
             self.k40.home_position()
         self.laserX  = 0.0
@@ -3790,6 +3764,8 @@ class Application(Frame):
             self.k40=None
         
     def Initialize_Laser(self,event=None):
+        if self.GUI_Disabled:
+            return
         self.stop[0]=True
         self.Release_USB()
         self.k40=None
@@ -3802,8 +3778,7 @@ class Application(Frame):
                 self.Home()
             else:
                 self.Unlock()
-            
-        #except StandardError as e:
+
         except Exception as e:
             error_text = "%s" %(e)
             if "BACKEND" in error_text.upper():
@@ -3820,6 +3795,8 @@ class Application(Frame):
             debug_message(traceback.format_exc())
             
     def Unlock(self,event=None):
+        if self.GUI_Disabled:
+            return
         if self.k40 != None:
             try:
                 self.k40.unlock_rail()
@@ -3965,22 +3942,34 @@ class Application(Frame):
         webbrowser.open_new(r"https://www.scorchworks.com/K40whisperer/k40w_manual.html")
 
     def KEY_F1(self, event):
+        if self.GUI_Disabled:
+            return
         self.menu_Help_About()
 
     def KEY_F2(self, event):
+        if self.GUI_Disabled:
+            return
         self.GEN_Settings_Window()
 
     def KEY_F3(self, event):
+        if self.GUI_Disabled:
+            return
         self.RASTER_Settings_Window()
 
     def KEY_F4(self, event):
+        if self.GUI_Disabled:
+            return
         self.ROTARY_Settings_Window()
         self.menu_View_Refresh()
 
     def KEY_F5(self, event):
+        if self.GUI_Disabled:
+            return
         self.menu_View_Refresh()
 
     def KEY_F6(self, event):
+        if self.GUI_Disabled:
+            return
         self.advanced.set(not self.advanced.get())
         self.menu_View_Refresh()
 
@@ -4779,6 +4768,8 @@ class Application(Frame):
     #                         Temporary Move Window                                #
     ################################################################################
     def move_head_window_temporary(self,new_pos_offset):
+        if self.GUI_Disabled:
+            return
         dx_inches = round(new_pos_offset[0]/1000.0,3)
         dy_inches = round(new_pos_offset[1]/1000.0,3)
         Xnew,Ynew = self.XY_in_bounds(dx_inches,dy_inches,no_size=True)
@@ -5269,7 +5260,9 @@ class Application(Frame):
     #                            Trace Send Window                                 #
     ################################################################################
 
-    def TRACE_Settings_Window(self, dummy=None):        
+    def TRACE_Settings_Window(self, dummy=None):
+        if self.GUI_Disabled:
+            return
         trace_window = Toplevel(width=350, height=180)
         self.trace_window=trace_window
         trace_window.grab_set() # Use grab_set to prevent user input in the main window during calculations
