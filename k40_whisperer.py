@@ -5795,8 +5795,8 @@ try:
         import tkinter.font
         default_font = tkinter.font.nametofont("TkDefaultFont")
 
-    default_font.configure(size=9)
-    default_font.configure(family='arial')
+    default_font.configure(size=12)
+    default_font.configure(family='San Francisco')
     #print(default_font.cget("size"))
     #print(default_font.cget("family"))
 except:
