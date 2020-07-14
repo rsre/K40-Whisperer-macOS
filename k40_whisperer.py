@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.51'
+version = '0.52'
 title_text = app_name+" V"+version
 
 import sys
@@ -2068,14 +2068,15 @@ class Application(Frame):
             #self.make_raster_coords()
         self.refreshTime()
 
-        if self.Design_bounds[0] > self.VengData.bounds[0] or\
-           self.Design_bounds[0] > self.VcutData.bounds[0] or\
-           self.Design_bounds[1] < self.VengData.bounds[1] or\
-           self.Design_bounds[1] < self.VcutData.bounds[1] or\
-           self.Design_bounds[2] > self.VengData.bounds[2] or\
-           self.Design_bounds[2] > self.VcutData.bounds[2] or\
-           self.Design_bounds[3] < self.VengData.bounds[3] or\
-           self.Design_bounds[3] < self.VcutData.bounds[3]:
+        margin=0.0625 # A bit of margin to prevent the warningwindow for designs that are close to being within the bounds
+        if self.Design_bounds[0] > self.VengData.bounds[0]+margin or\
+           self.Design_bounds[0] > self.VcutData.bounds[0]+margin or\
+           self.Design_bounds[1] < self.VengData.bounds[1]-margin or\
+           self.Design_bounds[1] < self.VcutData.bounds[1]-margin or\
+           self.Design_bounds[2] > self.VengData.bounds[2]+margin or\
+           self.Design_bounds[2] > self.VcutData.bounds[2]+margin or\
+           self.Design_bounds[3] < self.VengData.bounds[3]-margin or\
+           self.Design_bounds[3] < self.VcutData.bounds[3]-margin:
             line1 = "Warning:\n"
             line2 = "There is vector cut or vector engrave data located outside of the SVG page bounds.\n\n"
             line3 = "K40 Whisperer will attempt to use all of the vector data.  "
@@ -5785,6 +5786,21 @@ app.master.title(title_text)
 app.master.iconname("K40")
 app.master.minsize(800,560)
 app.master.geometry("800x560")
+
+try:
+    try:
+        import tkFont
+        default_font = tkFont.nametofont("TkDefaultFont")
+    except:
+        import tkinter.font
+        default_font = tkinter.font.nametofont("TkDefaultFont")
+
+    default_font.configure(size=12)
+    default_font.configure(family='San Francisco')
+    #print(default_font.cget("size"))
+    #print(default_font.cget("family"))
+except:
+    debug_message("Font Set Failed.")
 
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)
