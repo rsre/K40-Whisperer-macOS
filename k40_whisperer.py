@@ -2,7 +2,7 @@
 """
     K40 Whisperer
 
-    Copyright (C) <2017-2019>  <Scorch>
+    Copyright (C) <2017-2020>  <Scorch>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.43'
+version = '0.54'
 title_text = app_name+" V"+version
 
 import sys
@@ -101,7 +101,12 @@ try:
 except:
     print("Unable to load Pyclipper library (Offset trace outline will not work without it)")
     PYCLIPPER = False
- 
+
+try:
+    os.chdir(os.path.dirname(__file__))
+except:
+    pass
+
 QUIET = False
 
 # macOS Mojave and tikinter buttons are blank
@@ -109,7 +114,7 @@ QUIET = False
 # Essentially the fix is to slightly resize the window after it opens.
 macOS_button_fix_enabled = False
 
-def macOS_button_fix(window):
+def macOS_button_fix(win):
     def make_window_resizer(w):
         def window_resizer():
             a = w.winfo_geometry().split('+')[0]
@@ -126,8 +131,8 @@ def macOS_button_fix(window):
             v, _, _ = platform.mac_ver()
             v = float('.'.join(v.split('.')[:2]))
             if v >= 10.14:
-                window.update()
-                window.after(0, make_window_resizer(window))
+                win.update()
+                win.after(0, make_window_resizer(win))
         except:
             pass
 
@@ -221,6 +226,16 @@ class Application(Frame):
         self.master.bind('<Alt-Control-6>'    , self.Move_Arb_Right)
         self.master.bind('<Alt-Control-8>'    , self.Move_Arb_Up)
         self.master.bind('<Alt-Control-Key-2>', self.Move_Arb_Down)
+
+        self.master.bind('<Alt-Left>' , self.Move_Arb_Left)
+        self.master.bind('<Alt-Right>', self.Move_Arb_Right)
+        self.master.bind('<Alt-Up>'   , self.Move_Arb_Up)
+        self.master.bind('<Alt-Down>' , self.Move_Arb_Down)
+
+        self.master.bind('<Alt-Key-4>', self.Move_Arb_Left)
+        self.master.bind('<Alt-6>'    , self.Move_Arb_Right)
+        self.master.bind('<Alt-8>'    , self.Move_Arb_Up)
+        self.master.bind('<Alt-Key-2>', self.Move_Arb_Down)
 
         #####
         self.master.bind('<Control-i>' , self.Initialize_Laser)
@@ -428,6 +443,7 @@ class Application(Frame):
         self.laserX    = 0.0
         self.laserY    = 0.0
         self.PlotScale = 1.0
+        self.GUI_Disabled = False
 
         # PAN and ZOOM STUFF
         self.panx = 0
@@ -1753,6 +1769,8 @@ class Application(Frame):
 
 
     def menu_Reload_Design(self,event=None):
+        if self.GUI_Disabled:
+            return
         file_full = self.DESIGN_FILE
         file_name = os.path.basename(file_full)
         if ( os.path.isfile(file_full) ):
@@ -1781,15 +1799,27 @@ class Application(Frame):
         
 
     def menu_File_Open_Design(self,event=None):
+        if self.GUI_Disabled:
+            return
         init_dir = os.path.dirname(self.DESIGN_FILE)
         if ( not os.path.isdir(init_dir) ):
             init_dir = self.HOME_DIR
 
-        fileselect = askopenfilename(filetypes=[("Design Files", ("*.svg","*.dxf")),
-                                            ("G-Code Files", ("*.ngc","*.gcode","*.g","*.tap")),\
-                                            ("DXF Files","*.dxf"),\
-                                            ("SVG Files","*.svg"),\
-                                            ("All Files","*"),\
+        design_types = ("Design Files", ("*.svg","*.dxf"))
+        gcode_types  = ("G-Code Files", ("*.ngc","*.gcode","*.g","*.tap"))
+        
+        Name, fileExtension = os.path.splitext(self.DESIGN_FILE)
+        TYPE=fileExtension.upper()
+        if TYPE != '.DXF' and TYPE!='.SVG' and TYPE!='.EGV':
+            default_types = gcode_types
+        else:
+            default_types = design_types
+        
+        fileselect = askopenfilename(filetypes=[default_types,
+                                            ("G-Code Files ", ("*.ngc","*.gcode","*.g","*.tap")),\
+                                            ("DXF Files ","*.dxf"),\
+                                            ("SVG Files ","*.svg"),\
+                                            ("All Files ","*"),\
                                             ("Design Files ", ("*.svg","*.dxf"))],\
                                             initialdir=init_dir)
 
@@ -2013,7 +2043,7 @@ class Application(Frame):
                 svg_reader.make_paths(txt2paths=True)
                 
         except Exception as e:
-            msg1 = "SVG file load failed: "
+            msg1 = "SVG Error: "
             msg2 = "%s" %(e)
             self.statusMessage.set((msg1+msg2).split("\n")[0] )
             self.statusbar.configure( bg = 'red' )
@@ -2048,14 +2078,15 @@ class Application(Frame):
             #self.make_raster_coords()
         self.refreshTime()
 
-        if self.Design_bounds[0] > self.VengData.bounds[0] or\
-           self.Design_bounds[0] > self.VcutData.bounds[0] or\
-           self.Design_bounds[1] < self.VengData.bounds[1] or\
-           self.Design_bounds[1] < self.VcutData.bounds[1] or\
-           self.Design_bounds[2] > self.VengData.bounds[2] or\
-           self.Design_bounds[2] > self.VcutData.bounds[2] or\
-           self.Design_bounds[3] < self.VengData.bounds[3] or\
-           self.Design_bounds[3] < self.VcutData.bounds[3]:
+        margin=0.0625 # A bit of margin to prevent the warningwindow for designs that are close to being within the bounds
+        if self.Design_bounds[0] > self.VengData.bounds[0]+margin or\
+           self.Design_bounds[0] > self.VcutData.bounds[0]+margin or\
+           self.Design_bounds[1] < self.VengData.bounds[1]-margin or\
+           self.Design_bounds[1] < self.VcutData.bounds[1]-margin or\
+           self.Design_bounds[2] > self.VengData.bounds[2]+margin or\
+           self.Design_bounds[2] > self.VcutData.bounds[2]+margin or\
+           self.Design_bounds[3] < self.VengData.bounds[3]-margin or\
+           self.Design_bounds[3] < self.VcutData.bounds[3]-margin:
             line1 = "Warning:\n"
             line2 = "There is vector cut or vector engrave data located outside of the SVG page bounds.\n\n"
             line3 = "K40 Whisperer will attempt to use all of the vector data.  "
@@ -2301,6 +2332,46 @@ class Application(Frame):
 
     #######################################################################
 
+    def gcode_error_message(self,message):
+        error_report = Toplevel(width=525,height=60)
+        error_report.title("G-Code Reading Errors/Warnings")
+        error_report.iconname("G-Code Errors")
+        error_report.grab_set()
+        return_value =  StringVar()
+        return_value.set("none")
+
+        try:
+            error_report.iconbitmap(bitmap="@emblem64")
+        except:
+            debug_message(traceback.format_exc())
+            pass
+
+        def Close_Click(event):
+            return_value.set("close")
+            error_report.destroy()
+            
+        #Text Box
+        Error_Frame = Frame(error_report)
+        scrollbar = Scrollbar(Error_Frame, orient=VERTICAL)
+        Error_Text = Text(Error_Frame, width="80", height="20",yscrollcommand=scrollbar.set,bg='white')
+        for line in message:
+            Error_Text.insert(END,line+"\n")
+        scrollbar.config(command=Error_Text.yview)
+        scrollbar.pack(side=RIGHT,fill=Y)
+        #End Text Box
+
+        Button_Frame = Frame(error_report)
+        close_button = Button(Button_Frame,text=" Close ")
+        close_button.bind("<ButtonRelease-1>", Close_Click)
+        close_button.pack(side=RIGHT,fill=X)
+        
+        Error_Text.pack(side=LEFT,fill=BOTH,expand=1)
+        Button_Frame.pack(side=BOTTOM)
+        Error_Frame.pack(side=LEFT,fill=BOTH,expand=1)
+        
+        root.wait_window(error_report)
+        return return_value.get()
+
     def Open_G_Code(self,filename):
         self.resetPath()
         
@@ -2309,9 +2380,8 @@ class Application(Frame):
             MSG = g_rip.Read_G_Code(filename, XYarc2line = True, arc_angle=2, units="in", Accuracy="")
             Error_Text = ""
             if MSG!=[]:
-                for line in MSG:
-                    Error_Text = Error_Text + line + "\n"
-                    message_box("G-Code Messages", Error_Text)
+                self.gcode_error_message(MSG)
+
         #except StandardError as e:
         except Exception as e:
             msg1 = "G-Code Load Failed:  "
@@ -2726,6 +2796,8 @@ class Application(Frame):
             pass
 
     def Move_Arbitrary(self,MoveX,MoveY,dummy=None):
+        if self.GUI_Disabled:
+            return
         if self.HomeUR.get():
             DX = -MoveX
         else:
@@ -2736,6 +2808,8 @@ class Application(Frame):
         self.move_head_window_temporary([NewXpos,NewYpos])
 
     def Move_Arb_Step(self,dx,dy):
+        if self.GUI_Disabled:
+            return
         if self.units.get()=="in":
             dx_inches = round(dx*1000)
             dy_inches = round(dy*1000)
@@ -2779,6 +2853,8 @@ class Application(Frame):
         self.Rapid_Move( 0,-JOG_STEP )
 
     def Rapid_Move(self,dx,dy):
+        if self.GUI_Disabled:
+            return
         if self.units.get()=="in":
             dx_inches = round(dx,3)
             dy_inches = round(dy,3)
@@ -2856,10 +2932,11 @@ class Application(Frame):
         return True
 
     def set_gui(self,new_state="normal"):
-        #if new_state=="normal":
-        #    self.stop[0]=True
-        #else:
-        #    self.stop[0]=False
+        if new_state=="normal":
+            self.GUI_Disabled=False
+        else:
+            self.GUI_Disabled=True
+
         try:
             self.menuBar.entryconfigure("File"    , state=new_state)
             self.menuBar.entryconfigure("View"    , state=new_state)
@@ -2881,42 +2958,25 @@ class Application(Frame):
                 debug_message(traceback.format_exc())
 
     def Vector_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Vector Cut: Processing Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Vector Cut: Processing Vector Data.")
         if self.VcutData.ecoords!=[]:
             self.send_data("Vector_Cut", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data to cut")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
         
     def Vector_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Vector Engrave: Processing Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Vector Engrave: Processing Vector Data.")
         if self.VengData.ecoords!=[]:
             self.send_data("Vector_Eng", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data to engrave")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
 
     def Trace_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Boundary Trace: Processing Data.")
-        self.master.update()
-
+        self.Prepare_for_laser_run("Boundary Trace: Processing Data.")
         self.trace_coords = self.make_trace_path()
 
         if self.trace_coords!=[]:
@@ -2925,15 +2985,9 @@ class Application(Frame):
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No trace data to follow")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
 
     def Raster_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Raster Engraving: Processing Image Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Raster Engraving: Processing Image Data.")
         try:
             self.make_raster_coords()
             if self.RengData.ecoords!=[]:
@@ -2957,16 +3011,10 @@ class Application(Frame):
             self.statusbar.configure( bg = 'red' )
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
-        #self.set_gui("normal")
-        #self.stop[0]=True
         self.Finish_Job()
 
     def Raster_Vector_Eng(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Raster Engraving: Processing Image and Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Raster Engraving: Processing Image and Vector Data.")
         try:
             self.make_raster_coords()
             if self.RengData.ecoords!=[] or self.VengData.ecoords!=[]:
@@ -2982,32 +3030,18 @@ class Application(Frame):
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
-
 
     def Vector_Eng_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Vector Cut: Processing Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Vector Cut: Processing Vector Data.")
         if self.VcutData.ecoords!=[] or self.VengData.ecoords!=[]:
             self.send_data("Vector_Eng+Vector_Cut", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No vector data.")
         self.Finish_Job()
-        #self.set_gui("normal")
-        #self.stop[0]=True
-
         
     def Raster_Vector_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("Raster Engraving: Processing Image and Vector Data.")
-        self.master.update()
+        self.Prepare_for_laser_run("Raster Engraving: Processing Image and Vector Data.")
         try:
             self.make_raster_coords()
             if self.RengData.ecoords!=[] or self.VengData.ecoords!=[] or self.VcutData.ecoords!=[]:
@@ -3022,25 +3056,24 @@ class Application(Frame):
             self.statusbar.configure( bg = 'red' )
             message_box(msg1, msg2)
             debug_message(traceback.format_exc())
-        #self.set_gui("normal")
-        #self.stop[0]=True
         self.Finish_Job()
         
-        
     def Gcode_Cut(self, output_filename=None):
-        self.stop[0]=False
-        self.set_gui("disabled")
-        self.statusbar.configure( bg = 'green' )
-        self.statusMessage.set("G Code Cutting.")
-        self.master.update()
+        self.Prepare_for_laser_run("G Code Cutting.")
         if self.GcodeData.ecoords!=[]:
             self.send_data("Gcode_Cut", output_filename)
         else:
             self.statusbar.configure( bg = 'yellow' )
             self.statusMessage.set("No g-code data to cut")
-        #self.set_gui("normal")
-        #self.stop[0]=True
         self.Finish_Job()
+
+    def Prepare_for_laser_run(self,msg):
+        self.stop[0]=False
+        self.move_head_window_temporary([0,0])
+        self.set_gui("disabled")
+        self.statusbar.configure( bg = 'green' )
+        self.statusMessage.set(msg)
+        self.master.update()
 
     def Finish_Job(self, event=None):
         self.set_gui("normal")
@@ -3224,7 +3257,7 @@ class Application(Frame):
         return inside
 
     def optimize_paths(self,ecoords,inside_check=True):
-        order_out = self.Sort_Paths(ecoords)
+        order_out = self.Sort_Paths(ecoords)    
         lastx=-999
         lasty=-999
         Acc=0.004
@@ -3341,7 +3374,12 @@ class Application(Frame):
         for i in range(len(coords)):
             coords_rotate_mirror.append(coords[i][:])
             if self.mirror.get():
-                coords_rotate_mirror[i][0]=xmin+xmax-coords_rotate_mirror[i][0]
+                if self.inputCSYS.get() and self.RengData.image == None:
+                    coords_rotate_mirror[i][0]=-coords_rotate_mirror[i][0]
+                else:
+                    coords_rotate_mirror[i][0]=xmin+xmax-coords_rotate_mirror[i][0]
+                
+                
             if self.rotate.get():
                 x = coords_rotate_mirror[i][0]
                 y = coords_rotate_mirror[i][1]
@@ -3396,8 +3434,6 @@ class Application(Frame):
                 xmin,xmax,ymin,ymax = 0.0,0.0,0.0,0.0
             else:
                 xmin,xmax,ymin,ymax = self.Get_Design_Bounds()
-                
-            self.move_head_window_temporary([0,0])
                         
             startx = xmin
             starty = ymax
@@ -3681,6 +3717,8 @@ class Application(Frame):
         self.statusMessage.set("Data saved to: %s" %(fname))
         
     def Home(self, event=None):
+        if self.GUI_Disabled:
+            return
         if self.k40 != None:
             self.k40.home_position()
         self.laserX  = 0.0
@@ -3713,8 +3751,14 @@ class Application(Frame):
         line1 = "Sending data to the laser from K40 Whisperer is currently Paused."
         line2 = "Press \"OK\" to abort any jobs currently running."
         line3 = "Press \"Cancel\" to resume."
+        if self.k40 != None:
+            self.k40.pause_un_pause()
+            
         if message_ask_ok_cancel("Stop Laser Job.", "%s\n\n%s\n%s" %(line1,line2,line3)):
             self.stop[0]=True
+        else:
+            if self.k40 != None:
+                self.k40.pause_un_pause()
 
     def Hide_Advanced(self,event=None):
         self.advanced.set(0)
@@ -3731,6 +3775,8 @@ class Application(Frame):
             self.k40=None
         
     def Initialize_Laser(self,event=None):
+        if self.GUI_Disabled:
+            return
         self.stop[0]=True
         self.Release_USB()
         self.k40=None
@@ -3743,8 +3789,7 @@ class Application(Frame):
                 self.Home()
             else:
                 self.Unlock()
-            
-        #except StandardError as e:
+
         except Exception as e:
             error_text = "%s" %(e)
             if "BACKEND" in error_text.upper():
@@ -3761,6 +3806,8 @@ class Application(Frame):
             debug_message(traceback.format_exc())
             
     def Unlock(self,event=None):
+        if self.GUI_Disabled:
+            return
         if self.k40 != None:
             try:
                 self.k40.unlock_rail()
@@ -3846,7 +3893,7 @@ class Application(Frame):
         self.statusbar.configure( bg = 'white' )
 
         macOS_button_fix(root)
-         
+
     def menu_Inside_First_Callback(self, varName, index, mode):
         if self.GcodeData.ecoords != []:
             if self.VcutData.sorted == True:
@@ -3867,7 +3914,7 @@ class Application(Frame):
         self.refreshTime()
         self.set_gui("normal")
         self.menu_View_Refresh()
-        
+
     def do_about_dialog(self):
         tk_version = root.tk.call('info', 'patchlevel')
         about = "K40 Whisperer Version %s\n\n" %(version)
@@ -3906,22 +3953,34 @@ class Application(Frame):
         webbrowser.open_new(r"https://www.scorchworks.com/K40whisperer/k40w_manual.html")
 
     def KEY_F1(self, event):
+        if self.GUI_Disabled:
+            return
         self.menu_Help_About()
 
     def KEY_F2(self, event):
+        if self.GUI_Disabled:
+            return
         self.GEN_Settings_Window()
 
     def KEY_F3(self, event):
+        if self.GUI_Disabled:
+            return
         self.RASTER_Settings_Window()
 
     def KEY_F4(self, event):
+        if self.GUI_Disabled:
+            return
         self.ROTARY_Settings_Window()
         self.menu_View_Refresh()
 
     def KEY_F5(self, event):
+        if self.GUI_Disabled:
+            return
         self.menu_View_Refresh()
 
     def KEY_F6(self, event):
+        if self.GUI_Disabled:
+            return
         self.advanced.set(not self.advanced.get())
         self.menu_View_Refresh()
 
@@ -4720,6 +4779,8 @@ class Application(Frame):
     #                         Temporary Move Window                                #
     ################################################################################
     def move_head_window_temporary(self,new_pos_offset):
+        if self.GUI_Disabled:
+            return
         dx_inches = round(new_pos_offset[0]/1000.0,3)
         dy_inches = round(new_pos_offset[1]/1000.0,3)
         Xnew,Ynew = self.XY_in_bounds(dx_inches,dy_inches,no_size=True)
@@ -4752,6 +4813,7 @@ class Application(Frame):
         gen_settings = Toplevel(width=gen_width, height=560) #460+75)
         gen_settings.grab_set() # Use grab_set to prevent user input in the main window
         gen_settings.focus_set()
+        gen_settings.resizable(0,0)
         gen_settings.title('General Settings')
         gen_settings.iconname("General Settings")
 
@@ -4972,6 +5034,7 @@ class Application(Frame):
         raster_settings = Toplevel(width=Wset, height=Hset)
         raster_settings.grab_set() # Use grab_set to prevent user input in the main window
         raster_settings.focus_set()
+        raster_settings.resizable(0,0)
         raster_settings.title('Raster Settings')
         raster_settings.iconname("Raster Settings")
 
@@ -5146,6 +5209,7 @@ class Application(Frame):
         rotary_settings = Toplevel(width=350, height=175)
         rotary_settings.grab_set() # Use grab_set to prevent user input in the main window
         rotary_settings.focus_set()
+        rotary_settings.resizable(0,0)
         rotary_settings.title('Rotary Settings')
         rotary_settings.iconname("Rotary Settings")
 
@@ -5207,10 +5271,13 @@ class Application(Frame):
     #                            Trace Send Window                                 #
     ################################################################################
 
-    def TRACE_Settings_Window(self, dummy=None):        
+    def TRACE_Settings_Window(self, dummy=None):
+        if self.GUI_Disabled:
+            return
         trace_window = Toplevel(width=350, height=180)
         self.trace_window=trace_window
         trace_window.grab_set() # Use grab_set to prevent user input in the main window during calculations
+        trace_window.resizable(0,0)
         trace_window.title('Trace Boundary')
         trace_window.iconname("Trace Boundary")
 
@@ -5291,6 +5358,7 @@ class Application(Frame):
         
         egv_send = Toplevel(width=400, height=180)
         egv_send.grab_set() # Use grab_set to prevent user input in the main window during calculations
+        egv_send.resizable(0,0)
         egv_send.title('EGV Send')
         egv_send.iconname("EGV Send")
 
@@ -5440,7 +5508,6 @@ class UnitsDialog(tkSimpleDialog.Dialog):
 
     def apply(self):
         self.result = self.uom.get()
-        #macOS_button_fix(gen_settings)
         return 
 
 
@@ -5634,13 +5701,13 @@ class pxpiDialog(tkSimpleDialog.Dialog):
         Title_Text0 = Label(master, text=t0+t1+t2, anchor=W)
         Title_Text1 = Label(master, text=t3, anchor=W)
         
-        Radio_SVG_pxpi_96   = Radiobutton(master,text=" 96 px/in", value="96")
+        Radio_SVG_pxpi_96   = Radiobutton(master,text=" 96 units/in", value="96")
         Label_SVG_pxpi_96   = Label(master,text="(File saved with Inkscape v0.92 or newer)", anchor=W)
         
-        Radio_SVG_pxpi_90   = Radiobutton(master,text=" 90 px/in", value="90")
+        Radio_SVG_pxpi_90   = Radiobutton(master,text=" 90 units/in", value="90")
         Label_SVG_pxpi_90   = Label(master,text="(File saved with Inkscape v0.91 or older)", anchor=W)
         
-        Radio_SVG_pxpi_72   = Radiobutton(master,text=" 72 px/in", value="72")
+        Radio_SVG_pxpi_72   = Radiobutton(master,text=" 72 units/in", value="72")
         Label_SVG_pxpi_72   = Label(master,text="(File saved with Adobe Illustrator)", anchor=W)
 
         Radio_Res_Custom = Radiobutton(master,text=" Custom:", value="custom")
@@ -5649,7 +5716,7 @@ class pxpiDialog(tkSimpleDialog.Dialog):
 
         Entry_Custom_pxpi   = Entry(master,width="10")
         Entry_Custom_pxpi.configure(textvariable=self.other)
-        Label_pxpi_units =  Label(master,text="px/in", anchor=W)
+        Label_pxpi_units =  Label(master,text="units/in", anchor=W)
         self.trace_id_pxpi = self.other.trace_variable("w", Entry_custom_Callback)
 
         Label_Width =  Label(master,text="Width", anchor=W)
@@ -5729,6 +5796,21 @@ app.master.title(title_text)
 app.master.iconname("K40")
 app.master.minsize(800,560)
 app.master.geometry("800x560")
+
+try:
+    try:
+        import tkFont
+        default_font = tkFont.nametofont("TkDefaultFont")
+    except:
+        import tkinter.font
+        default_font = tkinter.font.nametofont("TkDefaultFont")
+
+    default_font.configure(size=12)
+    default_font.configure(family='San Francisco')
+    #print(default_font.cget("size"))
+    #print(default_font.cget("family"))
+except:
+    debug_message("Font Set Failed.")
 
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)

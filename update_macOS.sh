@@ -56,7 +56,7 @@ then
 	URL=$1
 fi
 
-# http://www.scorchworks.com/K40whisperer/K40_Whisperer-0.29_src.zip
+# http://www.scorchworks.com/K40whisperer/K40_Whisperer-0.51_src.zip
 if [ ! -z ${URL+x} ]
 then
 	echo "Download K40 Whisperer source archive..."

@@ -56,9 +56,9 @@ brew cask install xquartz
 brew cask install inkscape
 brew install pyenv
 
-# Install Python 3.7.2 with pyenv and set it as the default Python
-PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.7.2
-pyenv global 3.7.2
+# Install Python 3.7.7 with pyenv and set it as the default Python
+PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.7.7
+pyenv global 3.7.7
 rehash
 ```
 
@@ -136,7 +136,6 @@ This fork adds the following files to Scorch's work
 
 * `build_macOS.sh` -- bash build script to build and create application bundle.
 * `update_macOS.sh` -- bash script to patch a new version of K40 Whisperer and bundle it.
-* `py2app_setup.py` -- `py2app` setup script that creates the application bundle.
 * `emblem.icns` -- Icons for macOS application bundle (made with `sips`)
 * `macOS.patch` -- tweaks to Scorch's source for macOS
 
@@ -156,7 +155,7 @@ git clone https://github.com/stephenhouser/k40_whisperer.git
 cd k40_whisperer
 
 # Download, apply patches, build the application
-./update_macOS.sh https://www.scorchworks.com/K40whisperer/K40_Whisperer-0.29_src.zip
+./update_macOS.sh https://www.scorchworks.com/K40whisperer/K40_Whisperer-0.49_src.zip
 
 # Test/Fix/Test...(needs some work)
 ...
@@ -164,11 +163,11 @@ open ./dist/K40\ Whisperer.app
 ...
 
 # Move newly generated patch file into place
-mv macOS-0.29.patch macOS.patch
+mv macOS-0.49.patch macOS.patch
 
 # Commit and push back to GitHub
-git commit -a -m"Update to v0.29"
-git tag v0.29
+git commit -a -m"Update to v0.49"
+git tag v0.49
 git push --follow-tags
 ```
 

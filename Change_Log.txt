@@ -235,3 +235,45 @@ Version 0.42:
 
 Version 0.43:
 - Fixed problem that prevented properly sending EGV file to the laser.
+
+Version 0.44:
+- Removed unnecessary commands from data sent to laser.  Reduced volume of data sent to laser.
+- Improved pause function.  Laser not stops immediately rather than waiting for buffer to empty.
+- Added code to get around "Backend not found" error in some cases.
+
+Version 0.45:
+- Reverted back to egv.py file from Version 0.43 fixing problem with movements introduced in Version 0.44
+
+Version 0.46:
+- Fixed error in positioning when using g-code input and the input coordinate system
+- Improved display of g-code errors and warnings
+- Changed file selection default to g-code if the last file opened was g-code
+
+Version 0.47:
+- Updated to work with Inkscape 1.0
+- Fixed mirroring when using input axes
+
+Version 0.48:
+- Fixed auto convert text to path when using older versions of Inkscape
+
+Version 0.49:
+- Added new default Inkscape executable path to the search list. So users don't need to specify the Inkscape location in the settings.
+
+Version 0.50:
+- Added support for running two of more lasers by opening more K40 Whisperer windows on a single machine.
+- Added protection to prevent the user from disrupting a running laser job by typing shortcut keys.
+
+Version 0.51:
+- Fixed problem in 0.50 that resulted in origin shifting if laser was not in upper left corner when a job was started.
+
+Version 0.52:
+- Added margin to prevent warning about out of bounds vector features when they are really close to the page boundary.
+- Added explicit font definition for GUI
+
+Version 0.53:
+- Fixed handling of some hidden layers/objects
+- Fixed handling of a less common color specification format
+- Brought back removal of unnecessary commands from data sent to laser (from V0.43 with a correction).  This Reduced volume of data sent to laser.
+
+Version 0.54:
+- Reverted back to egv.py file from Version 0.52 fixing problem with movements introduced in Version 0.53
