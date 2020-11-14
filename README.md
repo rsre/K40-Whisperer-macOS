@@ -24,7 +24,7 @@ These dependencies are best installed with [Homebrew](https://brew.sh/) in a `Te
 
 ```
 # Install HomeBrew (only if you don't have it)
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 
 # Install Dependencies
 brew install libusb
