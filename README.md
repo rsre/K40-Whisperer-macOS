@@ -28,7 +28,6 @@ These dependencies are best installed with [Homebrew](https://brew.sh/) in a `Te
 
 # Install Dependencies
 brew install libusb
-brew cask install xquartz
 brew cask install inkscape
 ```
 
@@ -52,13 +51,17 @@ Set up Python 3.7.2 with HomeBrew and pyenv. Something like the following should
 
 # Install Dependencies (only if you haven't done this already)
 brew install libusb
-brew cask install xquartz
 brew cask install inkscape
 brew install pyenv
 
 # Install Python 3.7.7 with pyenv and set it as the default Python
 PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.7.7
 pyenv global 3.7.7
+rehash
+
+# On macOS Big sur
+LDFLAGS="-L$(xcrun --show-sdk-path)/usr/lib" pyenv install 3.8.4
+pyenv global 3.8.4
 rehash
 ```
 

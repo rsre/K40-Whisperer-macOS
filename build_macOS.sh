@@ -37,10 +37,9 @@ done
 if [ "$SETUP_ENVIRONMENT" = true ]
 then
 	# Install HomeBrew (only if you don't have it)
-	/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 
 	# Install Dependencies
-	brew cask install xquartz
 	brew cask install inkscape
 	brew install libusb
 
