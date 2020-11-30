@@ -39,7 +39,7 @@ then
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 	# Install Dependencies
-	brew cask install inkscape
+	brew install inkscape
 	brew install libusb
 
 	# Install python environments...
