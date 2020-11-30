@@ -33,11 +33,10 @@ while getopts "hvdesp" OPTION; do
     esac
 done
 
-# *** Not Tested! ***
 if [ "$SETUP_ENVIRONMENT" = true ]
 then
 	# Install HomeBrew (only if you don't have it)
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 	# Install Dependencies
 	brew cask install inkscape
@@ -47,9 +46,9 @@ then
 	brew install pyenv
 	eval "$(pyenv init -)"
 
-	# Install Python 3.7.2 with pyenv and set it as the default Python
-	PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.7.7
-	pyenv global 3.7.7
+	# Install Python 3.9.0 with pyenv and set it as the default Python
+	PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.9.0
+	pyenv global 3.9.0
 	pyenv rehash
 fi
 
