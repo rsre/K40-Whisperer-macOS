@@ -238,13 +238,13 @@ class Application(Frame):
         self.master.bind('<Alt-Key-2>', self.Move_Arb_Down)
 
         #####
-        self.master.bind('<Control-i>' , self.Initialize_Laser)
-        self.master.bind('<Control-o>' , self.menu_File_Open_Design)
-        self.master.bind('<Control-l>' , self.menu_Reload_Design)
-        self.master.bind('<Control-h>' , self.Home)
-        self.master.bind('<Control-u>' , self.Unlock)
+        self.master.bind('<Command-i>' , self.Initialize_Laser)
+        self.master.bind('<Command-o>' , self.menu_File_Open_Design)
+        self.master.bind('<Command-l>' , self.menu_Reload_Design)
+        self.master.bind('<Command-h>' , self.Home)
+        self.master.bind('<Command-u>' , self.Unlock)
         self.master.bind('<Escape>'    , self.Stop)
-        self.master.bind('<Control-t>' , self.TRACE_Settings_Window)
+        self.master.bind('<Command-t>' , self.TRACE_Settings_Window)
 
         self.include_Reng = BooleanVar()
         self.include_Rpth = BooleanVar()
@@ -549,12 +549,12 @@ class Application(Frame):
         
         self.Initialize_Button = Button(self.master,text="Initialize Laser Cutter", command=self.Initialize_Laser)
 
-        self.Open_Button       = Button(self.master,text="Open\nDesign File",   command=self.menu_File_Open_Design)
-        self.Reload_Button     = Button(self.master,text="Reload\nDesign File", command=self.menu_Reload_Design)
+        self.Open_Button       = Button(self.master,text="Open Design",   command=self.menu_File_Open_Design)
+        self.Reload_Button     = Button(self.master,text="Reload Design", command=self.menu_Reload_Design)
         
         self.Home_Button       = Button(self.master,text="Home",            command=self.Home)
         self.UnLock_Button     = Button(self.master,text="Unlock Rail",     command=self.Unlock)
-        self.Stop_Button       = Button(self.master,text="Pause/Stop",      command=self.Stop)
+        self.Stop_Button       = Button(self.master,text="Pause / Stop",      command=self.Stop)
 
         try:
             self.left_image  = self.Imaging_Free(Image.open(resource_path("left.png")),bg=None)
@@ -611,8 +611,8 @@ class Application(Frame):
         self.Label_GoToY   = Label(self.master,text="Y", anchor=CENTER )
 
         # Adjust button wrap locations for macOS
-        self.Open_Button.config(wraplength=20)
-        self.Reload_Button.config(wraplength=20)
+        self.Open_Button.config(wraplength=90)
+        self.Reload_Button.config(wraplength=90)
         self.Reng_Button.config(text="Raster Eng.")
         self.Veng_Button.config(text="Vector Eng.")
 
@@ -761,17 +761,16 @@ class Application(Frame):
         SaveEGVmenu.add("command", label = "Vector Engrave and Cut"                , command = self.menu_File_Vector_Engrave_Cut)
         SaveEGVmenu.add("command", label = "Raster, Vector Engrave and Vector Cut" , command = self.menu_File_Raster_Vector_Cut)
         
-    
-        top_File.add_separator()
-        top_File.add("command", label = "Exit"              , command = self.menu_File_Quit)
-        
         self.menuBar.add("cascade", label="File", menu=top_File)
 
         #top_Edit = Menu(self.menuBar, tearoff=0)
         #self.menuBar.add("cascade", label="Edit", menu=top_Edit)
 
         top_View = Menu(self.menuBar, tearoff=0)
-        top_View.add("command", label = "Refresh   <F5>", command = self.menu_View_Refresh)
+        #top_View.add("command", label = "Show Tab Bar", command = self.menu_View_Refresh)
+
+        top_View.add("command", label = "Refresh", command = self.menu_View_Refresh, accelerator="F5")
+
         top_View.add_separator()
         top_View.add_checkbutton(label = "Show Raster Image"  ,  variable=self.include_Reng ,command= self.menu_View_Refresh)
         if DEBUG:
@@ -789,16 +788,16 @@ class Application(Frame):
         #top_View.add("command", label = "computeAccurateVeng",command= self.computeAccurateVeng)
         #top_View.add("command", label = "computeAccurateVcut",command= self.computeAccurateVcut)
 
-        self.menuBar.add("cascade", label="View", menu=top_View)
+        self.menuBar.add("cascade", label="View ", menu=top_View) # The space after View is needed so no uneeded crap is added automatically.
 
         top_Tools = Menu(self.menuBar, tearoff=0)
         self.menuBar.add("cascade", label="Tools", menu=top_Tools)
         USBmenu = Menu(self.master, relief = "raised", bd=2, tearoff=0)
           
         top_Tools.add("command", label = "Calculate Raster Time", command = self.menu_Calc_Raster_Time)
-        top_Tools.add("command", label = "Trace Design Boundary <Ctrl-t>", command = self.TRACE_Settings_Window)
+        top_Tools.add("command", label = "Trace Design Boundary", command = self.TRACE_Settings_Window, accelerator="Command-t")
         top_Tools.add_separator()
-        top_Tools.add("command", label = "Initialize Laser <Ctrl-i>", command = self.Initialize_Laser)
+        top_Tools.add("command", label = "Initialize Laser", command = self.Initialize_Laser, accelerator="Command-i")
         top_Tools.add_cascade(label="USB", menu=USBmenu)
         USBmenu.add("command", label = "Reset USB", command = self.Reset)
         USBmenu.add("command", label = "Release USB", command = self.Release_USB)
@@ -813,11 +812,11 @@ class Application(Frame):
         
 
         top_Settings = Menu(self.menuBar, tearoff=0)
-        top_Settings.add("command", label = "General Settings <F2>", command = self.GEN_Settings_Window)
-        top_Settings.add("command", label = "Raster Settings <F3>",  command = self.RASTER_Settings_Window)
-        top_Settings.add("command", label = "Rotary Settings <F4>",  command = self.ROTARY_Settings_Window)
+        top_Settings.add("command", label = "General Settings", command = self.GEN_Settings_Window, accelerator="F2")
+        top_Settings.add("command", label = "Raster Settings",  command = self.RASTER_Settings_Window, accelerator="F3")
+        top_Settings.add("command", label = "Rotary Settings",  command = self.ROTARY_Settings_Window, accelerator="F4")
         top_Settings.add_separator()
-        top_Settings.add_checkbutton(label = "Advanced Settings <F6>", variable=self.advanced ,command= self.menu_View_Refresh)
+        top_Settings.add_checkbutton(label = "Advanced Settings", variable=self.advanced ,command= self.menu_View_Refresh, accelerator="F6")
         
         self.menuBar.add("cascade", label="Settings", menu=top_Settings)
         
@@ -4016,11 +4015,11 @@ class Application(Frame):
                 x_units_L=x_entry_L+w_entry+2
 
                 Yloc=10
-                self.Initialize_Button.place (x=12, y=Yloc, width=100*2, height=23)
+                self.Initialize_Button.place (x=12, y=Yloc, width=100*2, height=28)
                 Yloc=Yloc+33
 
-                self.Open_Button.place (x=12, y=Yloc, width=100, height=40)
-                self.Reload_Button.place(x=12+100, y=Yloc, width=100, height=40)                
+                self.Open_Button.place (x=12, y=Yloc, width=100, height=28)
+                self.Reload_Button.place(x=12+100, y=Yloc, width=100, height=28)                
                 if h>=560:
                     Yloc=Yloc+50
                     self.separator1.place(x=x_label_L, y=Yloc,width=w_label+75+40, height=2)
@@ -4028,13 +4027,13 @@ class Application(Frame):
                     self.Label_Position_Control.place(x=x_label_L, y=Yloc, width=w_label*2, height=21)
 
                     Yloc=Yloc+25
-                    self.Home_Button.place (x=12, y=Yloc, width=100, height=23)
-                    self.UnLock_Button.place(x=12+100, y=Yloc, width=100, height=23)
+                    self.Home_Button.place (x=12, y=Yloc, width=100, height=28)
+                    self.UnLock_Button.place(x=12+100, y=Yloc, width=100, height=28)
 
                     Yloc=Yloc+33
-                    self.Label_Step.place(x=x_label_L, y=Yloc, width=w_label, height=21)
-                    self.Label_Step_u.place(x=x_units_L, y=Yloc, width=w_units, height=21)
-                    self.Entry_Step.place(x=x_entry_L, y=Yloc, width=w_entry, height=23)
+                    self.Label_Step.place(x=x_label_L, y=Yloc, width=w_label, height=26)
+                    self.Label_Step_u.place(x=x_units_L, y=Yloc, width=w_units, height=26)
+                    self.Entry_Step.place(x=x_entry_L, y=Yloc, width=w_entry, height=28)
 
                     ###########################################################################
                     Yloc=Yloc+30
@@ -4055,12 +4054,12 @@ class Application(Frame):
                 
                     Yloc=Yloc+bsz
                     ###########################################################################
-                    self.Label_GoToX.place(x=x_entry_L, y=Yloc, width=w_entry, height=23)
-                    self.Label_GoToY.place(x=x_units_L, y=Yloc, width=w_entry, height=23)
+                    self.Label_GoToX.place(x=x_entry_L, y=Yloc, width=w_entry, height=28)
+                    self.Label_GoToY.place(x=x_units_L, y=Yloc, width=w_entry, height=28)
                     Yloc=Yloc+25
-                    self.GoTo_Button.place (x=12, y=Yloc, width=100, height=23)
-                    self.Entry_GoToX.place(x=x_entry_L, y=Yloc, width=w_entry, height=23)
-                    self.Entry_GoToY.place(x=x_units_L, y=Yloc, width=w_entry, height=23)
+                    self.GoTo_Button.place (x=12, y=Yloc, width=100, height=28)
+                    self.Entry_GoToX.place(x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
+                    self.Entry_GoToY.place(x=x_units_L, y=Yloc+1, width=w_entry, height=28)
                     ###########################################################################
                 else:
                     ###########################################################################
@@ -4095,7 +4094,7 @@ class Application(Frame):
                 #From Bottom up
                 BUinit = self.h-70
                 Yloc = BUinit
-                self.Stop_Button.place (x=12, y=Yloc, width=100*2, height=30)
+                self.Stop_Button.place (x=12, y=Yloc, width=100*2, height=28)
                 
                 self.Stop_Button.configure(bg='light coral')
                 Yloc=Yloc-10+10
@@ -4113,21 +4112,21 @@ class Application(Frame):
                     self.Veng_Vcut_Button.place_forget()
 
                     Yloc=Yloc-30
-                    self.Vcut_Button.place      (x=12, y=Yloc, width=100, height=23)
-                    self.Entry_Vcut_feed.place  (x=x_entry_L, y=Yloc, width=w_entry, height=23)
-                    self.Label_Vcut_feed_u.place(x=x_units_L, y=Yloc, width=w_units, height=23)
+                    self.Vcut_Button.place      (x=12, y=Yloc, width=100, height=28)
+                    self.Entry_Vcut_feed.place  (x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
+                    self.Label_Vcut_feed_u.place(x=x_units_L, y=Yloc+1, width=w_units, height=28)
                     Y_Vcut=Yloc
 
                     Yloc=Yloc-30
-                    self.Veng_Button.place  (x=12, y=Yloc, width=100, height=23)
-                    self.Entry_Veng_feed.place(  x=x_entry_L, y=Yloc, width=w_entry, height=23)
-                    self.Label_Veng_feed_u.place(x=x_units_L, y=Yloc, width=w_units, height=23)
+                    self.Veng_Button.place  (x=12, y=Yloc, width=100, height=28)
+                    self.Entry_Veng_feed.place(  x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
+                    self.Label_Veng_feed_u.place(x=x_units_L, y=Yloc+1, width=w_units, height=28)
                     Y_Veng=Yloc
                     
                     Yloc=Yloc-30
-                    self.Reng_Button.place  (x=12, y=Yloc, width=100, height=23)
-                    self.Entry_Reng_feed.place(  x=x_entry_L, y=Yloc, width=w_entry, height=23)
-                    self.Label_Reng_feed_u.place(x=x_units_L, y=Yloc, width=w_units, height=23)
+                    self.Reng_Button.place  (x=12, y=Yloc, width=100, height=28)
+                    self.Entry_Reng_feed.place(  x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
+                    self.Label_Reng_feed_u.place(x=x_units_L, y=Yloc+1, width=w_units, height=28)
                     Y_Reng=Yloc
                     
                     if self.comb_vector.get() or self.comb_engrave.get():
@@ -4241,7 +4240,7 @@ class Application(Frame):
                         self.Checkbutton_Rotary_Enable_adv.place_forget()
 
                     adv_Yloc = BUinit
-                    self.Hide_Adv_Button.place (x=Xadvanced, y=adv_Yloc, width=wadv_use, height=30)
+                    self.Hide_Adv_Button.place (x=Xadvanced, y=adv_Yloc, width=wadv_use, height=28)
 
                     if self.RengData.image != None:
                         self.Label_inputCSYS_adv.configure(state="disabled")
@@ -5018,7 +5017,7 @@ class Application(Frame):
         Xbut=int(gen_settings.winfo_width()/2)
 
         self.GEN_Close = Button(gen_settings,text="Close")
-        self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=28, anchor="center")
         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.Set_Input_States_BATCH()
@@ -5191,7 +5190,7 @@ class Application(Frame):
         Xbut=int(raster_settings.winfo_width()/2)
 
         self.RASTER_Close = Button(raster_settings,text="Close")
-        self.RASTER_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.RASTER_Close.place(x=Xbut, y=Ybut, width=130, height=28, anchor="center")
         self.RASTER_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.bezier_M1_Callback()
@@ -5258,7 +5257,7 @@ class Application(Frame):
         Xbut=int(rotary_settings.winfo_width()/2)
 
         self.GEN_Close = Button(rotary_settings,text="Close")
-        self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=28, anchor="center")
         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.Set_Input_States_Rotary()
@@ -5344,7 +5343,7 @@ class Application(Frame):
         Xbut=int(trace_window.winfo_width()/2)
 
         self.Trace_Close = Button(trace_window,text="Cancel",command=Close_Click)
-        self.Trace_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
+        self.Trace_Close.place(x=Xbut, y=Ybut, width=130, height=28, anchor="center")
 
         macOS_button_fix(trace_window)
         trace_window.resizable(0,0)
@@ -5403,7 +5402,7 @@ class Application(Frame):
         Xbut=int(egv_send.winfo_width()/2)
 
         self.EGV_Close = Button(egv_send,text="Cancel")
-        self.EGV_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="e")
+        self.EGV_Close.place(x=Xbut, y=Ybut, width=130, height=28, anchor="e")
         self.EGV_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         def Close_and_Send_Click():
@@ -5412,7 +5411,7 @@ class Application(Frame):
             self.Open_EGV(EGV_filename, n_passes=int( float(self.n_egv_passes.get()) ))
             
         self.EGV_Send = Button(egv_send,text="Send EGV Data",command=Close_and_Send_Click)
-        self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=30, anchor="w")
+        self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=28, anchor="w")
 
         macOS_button_fix(egv_send)
         egv_send.resizable(0,0)
