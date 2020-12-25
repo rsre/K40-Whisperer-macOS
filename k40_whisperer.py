@@ -109,33 +109,6 @@ except:
 
 QUIET = False
 
-# macOS Mojave and tikinter buttons are blank
-# https://stackoverflow.com/questions/52529403/button-text-of-tkinter-not-works-in-mojave]
-# Essentially the fix is to slightly resize the window after it opens.
-macOS_button_fix_enabled = False
-
-def macOS_button_fix(win):
-    def make_window_resizer(w):
-        def window_resizer():
-            a = w.winfo_geometry().split('+')[0]
-            (width, height) = a.split('x')
-            w.geometry('%dx%d' % (int(width)+1, int(height)+1))
-
-        return window_resizer
-
-    # The fix causes a bit of flicker on startup, so only run it for macOS >= 10.14
-    # Check for macOS >= 10.14
-    if macOS_button_fix_enabled:
-        try:
-            import platform
-            v, _, _ = platform.mac_ver()
-            v = float('.'.join(v.split('.')[:2]))
-            if v >= 10.14:
-                win.update()
-                win.after(0, make_window_resizer(win))
-        except:
-            pass
-
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -609,13 +582,6 @@ class Application(Frame):
         
         self.Label_GoToX   = Label(self.master,text="X", anchor=CENTER )
         self.Label_GoToY   = Label(self.master,text="Y", anchor=CENTER )
-
-        # Adjust button wrap locations for macOS
-        self.Open_Button.config(wraplength=90)
-        self.Reload_Button.config(wraplength=90)
-        self.Reng_Button.config(text="Raster Eng.")
-        self.Veng_Button.config(text="Vector Eng.")
-
         ###########################################################################
         # End Left Column #
 
@@ -3891,8 +3857,6 @@ class Application(Frame):
 
         self.statusbar.configure( bg = 'white' )
 
-        macOS_button_fix(root)
-
     def menu_Inside_First_Callback(self, varName, index, mode):
         if self.GcodeData.ecoords != []:
             if self.VcutData.sorted == True:
@@ -5021,8 +4985,6 @@ class Application(Frame):
         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.Set_Input_States_BATCH()
-        macOS_button_fix(gen_settings)
-        gen_settings.resizable(0,0)
 
     ################################################################################
     #                          Raster Settings Window                              #
@@ -5198,8 +5160,6 @@ class Application(Frame):
         #if DEBUG and show_unsharp:
         #    self.Set_Input_States_Unsharp()
 
-        macOS_button_fix(raster_settings)
-        raster_settings.resizable(0,0)
 
     ################################################################################
     #                         Rotary Settings Window                               #
@@ -5261,10 +5221,6 @@ class Application(Frame):
         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
 
         self.Set_Input_States_Rotary()
-
-        macOS_button_fix(rotary_settings)
-        rotary_settings.resizable(0,0)
-
 
     ################################################################################
     #                            Trace Send Window                                 #
@@ -5344,10 +5300,6 @@ class Application(Frame):
 
         self.Trace_Close = Button(trace_window,text="Cancel",command=Close_Click)
         self.Trace_Close.place(x=Xbut, y=Ybut, width=130, height=28, anchor="center")
-
-        macOS_button_fix(trace_window)
-        trace_window.resizable(0,0)
-
         ################################################################################
 
     ################################################################################
@@ -5412,9 +5364,6 @@ class Application(Frame):
             
         self.EGV_Send = Button(egv_send,text="Send EGV Data",command=Close_and_Send_Click)
         self.EGV_Send.place(x=Xbut, y=Ybut, width=130, height=28, anchor="w")
-
-        macOS_button_fix(egv_send)
-        egv_send.resizable(0,0)
         ################################################################################
         
         
@@ -5837,6 +5786,4 @@ for option, value in opts:
         app.master.geometry("480x320")
 
 
-macOS_button_fix_enabled = True
-macOS_button_fix(root)
 root.mainloop()
