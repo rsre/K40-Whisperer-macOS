@@ -733,8 +733,6 @@ class Application(Frame):
         #self.menuBar.add("cascade", label="Edit", menu=top_Edit)
 
         top_View = Menu(self.menuBar, tearoff=0)
-        #top_View.add("command", label = "Show Tab Bar", command = self.menu_View_Refresh)
-
         top_View.add("command", label = "Refresh", command = self.menu_View_Refresh, accelerator="F5")
 
         top_View.add_separator()
@@ -4033,8 +4031,8 @@ class Application(Frame):
                     Yloc=Yloc+50
                     self.separator1.place(x=x_label_L, y=Yloc,width=w_label+75+40, height=2)
                     Yloc=Yloc+6
-                    self.Home_Button.place (x=12, y=Yloc, width=100, height=23)
-                    self.UnLock_Button.place(x=12+100, y=Yloc, width=100, height=23)
+                    self.Home_Button.place (x=12, y=Yloc, width=100, height=28)
+                    self.UnLock_Button.place(x=12+100, y=Yloc, width=100, height=28)
                     ##
                     self.Label_Step.place_forget()
                     self.Label_Step_u.place_forget()
