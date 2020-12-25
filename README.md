@@ -57,47 +57,47 @@ brew install pyenv
 # Install Python 3.8.6 with pyenv and set it as the default Python
 ```
 
-1. Install tcl-tk with Homebrew
+1. Install tcl-tk with Homebrew.
 ```brew install tcl-tk```
 
-2. Add tcl-tk to your $PATH 
+2. Add tcl-tk to your $PATH.
 ```
 echo 'export PATH="/usr/local/opt/tcl-tk/bin:$PATH"' >> ~/.zshrc
 ```
-3. Reload shell by quitting Terminal app or run 
+3. Reload shell by quitting Terminal app or using the source command.
 ```
 source ~/.zshrc
 ```
-4. Check that tcl-tk is in $PATH
+4. Check that tcl-tk is in $PATH.
 ```
 echo $PATH | grep --color=auto tcl-tk
 ```
 You should see your $PATH contents with tcl-tk highlighted.
 
-5. Now run the commands shown in Homebrew's output from step 1
+5. Now run the commands shown in Homebrew's output from step 1.
 ```
 export LDFLAGS="-L/usr/local/opt/tcl-tk/lib"
 export CPPFLAGS="-I/usr/local/opt/tcl-tk/include"
 export PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig"
 ```
-6. If you have Python version 3.8.6 already installed with pyenv then uninstall it
+6. If you have Python version 3.8.6 already installed with pyenv then uninstall it.
 ```
 pyenv uninstall 3.8.6
 ```
-7. Set the environment variables that will be used by python-build
+7. Set the environment variables that will be used by python-build.
 ```
 PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I/usr/local/opt/tcl-tk/include' --with-tcltk-libs='-L/usr/local/opt/tcl-tk/lib -ltcl8.6 -ltk8.6' --enable-framework" 
 ```
-Note: use tcl-tk version that was installed by Homebrew. At the moment of posting it was 8.6
-8. Install Python 
+Note: use tcl-tk version that was installed by Homebrew. At the moment of posting it was 8.6.
+8. Install Python.
 ```
 pyenv install 3.8.6
 ```
-9. Set your desired Python version
+9. Set your desired Python version.
 ```
 pyenv global 3.8.6
 ```
-10. Then running the build should work. If not, well, there should be a lot of error messages to help you track things down
+10. Then running the build should work. If not, well, there should be a lot of error messages to help you track things down.
 ```
 ./build_macOS.sh
 ```
