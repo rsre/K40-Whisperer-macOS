@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.54'
+version = '0.55'
 title_text = app_name+" V"+version
 
 import sys
