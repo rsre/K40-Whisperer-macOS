@@ -72,10 +72,10 @@ source ~/.zshrc
 ```
 echo $PATH | grep --color=auto tcl-tk
 ```
-You should see your $PATH contents with tcl-tk highlighted
-5. Now run this three commands from Homebrew's output from step #1
-```
+You should see your $PATH contents with tcl-tk highlighted.
 
+5. Now run the commands shown in Homebrew's output from step 1
+```
 export LDFLAGS="-L/usr/local/opt/tcl-tk/lib"
 export CPPFLAGS="-I/usr/local/opt/tcl-tk/include"
 export PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig"
