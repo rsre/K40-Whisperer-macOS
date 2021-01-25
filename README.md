@@ -37,13 +37,13 @@ You need not read any further in this document. You should be able to run K40 Wh
 
 In the main directory run `build_macOS.sh`. This will create a clickable macOS Application in the `./dist` directory named `K40 Whisperer.app` that can then be distributed or moved to your Applications folder. See the following sections for details based on your chosen Python version.
 
-If you are using one of the most excellent [Homebrew](https://brew.sh/) versions of Python, you are not only a wonderful person, but life will be easy for you. This build process has been tested *mostly* on Python 3.8.6 using [pyenv](https://github.com/pyenv/pyenv).
+If you are using one of the most excellent [Homebrew](https://brew.sh/) versions of Python, you are not only a wonderful person, but life will be easy for you. This build process has been tested *mostly* on Python 3.9.1 using [pyenv](https://github.com/pyenv/pyenv).
 
 NOTE: When installing Python with `pyenv`, you should use the `--enable-framework` flag so that Python can get properly bundled with the application.
 
-### Python 3.8.6 (preferred method)
+### Python 3.9.1 (preferred method)
 
-Set up Python 3.8.6 with HomeBrew and pyenv. Something like the following should work
+Set up Python 3.9.1 with HomeBrew and pyenv. Something like the following should work
 
 ```
 # Install HomeBrew (only if you don't have it)
@@ -54,7 +54,7 @@ brew install libusb
 brew cask install inkscape
 brew install pyenv
 
-# Install Python 3.8.6 with pyenv and set it as the default Python
+# Install Python 3.9.1 with pyenv and set it as the default Python
 ```
 
 1. Install tcl-tk with Homebrew.
@@ -80,9 +80,9 @@ export LDFLAGS="-L/usr/local/opt/tcl-tk/lib"
 export CPPFLAGS="-I/usr/local/opt/tcl-tk/include"
 export PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig"
 ```
-6. If you have Python version 3.8.6 already installed with pyenv then uninstall it.
+6. If you have Python version 3.9.1 already installed with pyenv then uninstall it.
 ```
-pyenv uninstall 3.8.6
+pyenv uninstall 3.9.1
 ```
 7. Set the environment variables that will be used by python-build.
 ```
@@ -91,11 +91,11 @@ PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I/usr/local/opt/tcl-tk/include' -
 Note: use tcl-tk version that was installed by Homebrew. At the moment of posting it was 8.6.
 8. Install Python.
 ```
-pyenv install 3.8.6
+pyenv install 3.9.1
 ```
 9. Set your desired Python version.
 ```
-pyenv global 3.8.6
+pyenv global 3.9.1
 ```
 10. Then running the build should work. If not, well, there should be a lot of error messages to help you track things down.
 ```

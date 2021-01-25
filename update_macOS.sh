@@ -56,7 +56,7 @@ then
 	URL=$1
 fi
 
-# http://www.scorchworks.com/K40whisperer/K40_Whisperer-0.51_src.zip
+# http://www.scorchworks.com/K40whisperer/K40_Whisperer-0.56_src.zip
 if [ ! -z ${URL+x} ]
 then
 	echo "Download K40 Whisperer source archive..."
@@ -121,6 +121,7 @@ patch -p0 -i macOS.patch
 # Update version in setup script
 echo "Update version number in setup script..."
 sed -i.orig "s/app_version = .*/app_version = \"${VERSION}\"/" py2app_setup.py
+sed -i.orig "s/'CFBundleShortVersionString': '.*'/'CFBundleShortVersionString': \'${VERSION}\'/" k40_whisperer.spec				
 
 # Build macOS application
 echo "Build macOS Application..."
