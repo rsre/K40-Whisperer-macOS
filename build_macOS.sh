@@ -42,13 +42,21 @@ then
 	brew install inkscape
 	brew install libusb
 
-	# Install python environments...
-	brew install pyenv
-	eval "$(pyenv init -)"
+	# Install Python 3.9.1 with tcl-tk using pyenv and set it as the default Python
 
-	# Install Python 3.9.0 with pyenv and set it as the default Python
-	PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.8.6
-	pyenv global 3.8.6
+	brew install tcl-tk # install upgraded tcl-tk version
+	brew install pyenv
+
+	pyenv uninstall 3.9.1
+	export PATH="/usr/local/opt/tcl-tk/bin:$PATH"
+	export LDFLAGS="-L/usr/local/opt/tcl-tk/lib"
+	export CPPFLAGS="-I/usr/local/opt/tcl-tk/include"
+	export PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig"
+	export PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' \
+                              --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'\
+                              --enable-framework"
+	pyenv install $(pyenv install --list | grep -v - | grep -v b | tail -1)
+	pyenv global 3.9.1
 	pyenv rehash
 fi
 

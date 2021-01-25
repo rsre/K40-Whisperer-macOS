@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.55'
+version = '0.56'
 title_text = app_name+" V"+version
 
 import sys
@@ -726,6 +726,10 @@ class Application(Frame):
         SaveEGVmenu.add("command", label = "Raster and Vector Engrave"             , command = self.menu_File_Raster_Vector_Engrave)
         SaveEGVmenu.add("command", label = "Vector Engrave and Cut"                , command = self.menu_File_Vector_Engrave_Cut)
         SaveEGVmenu.add("command", label = "Raster, Vector Engrave and Vector Cut" , command = self.menu_File_Raster_Vector_Cut)
+        
+    
+        top_File.add_separator()
+        top_File.add("command", label = "Exit"              , command = self.menu_File_Quit)
         
         self.menuBar.add("cascade", label="File", menu=top_File)
 
@@ -1773,7 +1777,7 @@ class Application(Frame):
         
         Name, fileExtension = os.path.splitext(self.DESIGN_FILE)
         TYPE=fileExtension.upper()
-        if TYPE != '.DXF' and TYPE!='.SVG' and TYPE!='.EGV':
+        if TYPE != '.DXF' and TYPE!='.SVG' and TYPE!='.EGV' and TYPE!='':
             default_types = gcode_types
         else:
             default_types = design_types
