@@ -3973,19 +3973,19 @@ class Application(Frame):
             if True:                
                 # Left Column #
                 w_label=90
-                w_entry=48
-                w_units=52
+                w_entry=46
+                w_units=50
 
                 x_label_L=10
-                x_entry_L=x_label_L+w_label+20-5
-                x_units_L=x_entry_L+w_entry+2
+                x_entry_L=x_label_L+w_label+20-5+5
+                x_units_L=x_entry_L+w_entry+2+5
 
                 Yloc=10
                 self.Initialize_Button.place (x=12, y=Yloc, width=100*2, height=28)
                 Yloc=Yloc+33
 
-                self.Open_Button.place (x=12, y=Yloc, width=100, height=28)
-                self.Reload_Button.place(x=12+100, y=Yloc, width=100, height=28)                
+                self.Open_Button.place (x=12, y=Yloc, width=96, height=28)
+                self.Reload_Button.place(x=12+96, y=Yloc, width=104, height=28)                
                 if h>=560:
                     Yloc=Yloc+50
                     self.separator1.place(x=x_label_L, y=Yloc,width=w_label+75+40, height=2)
@@ -4078,19 +4078,19 @@ class Application(Frame):
                     self.Veng_Vcut_Button.place_forget()
 
                     Yloc=Yloc-30
-                    self.Vcut_Button.place      (x=12, y=Yloc, width=100, height=28)
+                    self.Vcut_Button.place      (x=12, y=Yloc, width=108, height=28)
                     self.Entry_Vcut_feed.place  (x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
                     self.Label_Vcut_feed_u.place(x=x_units_L, y=Yloc+1, width=w_units, height=28)
                     Y_Vcut=Yloc
 
                     Yloc=Yloc-30
-                    self.Veng_Button.place  (x=12, y=Yloc, width=100, height=28)
+                    self.Veng_Button.place  (x=12, y=Yloc, width=108, height=28)
                     self.Entry_Veng_feed.place(  x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
                     self.Label_Veng_feed_u.place(x=x_units_L, y=Yloc+1, width=w_units, height=28)
                     Y_Veng=Yloc
                     
                     Yloc=Yloc-30
-                    self.Reng_Button.place  (x=12, y=Yloc, width=100, height=28)
+                    self.Reng_Button.place  (x=12, y=Yloc, width=108, height=28)
                     self.Entry_Reng_feed.place(  x=x_entry_L, y=Yloc+1, width=w_entry, height=28)
                     self.Label_Reng_feed_u.place(x=x_units_L, y=Yloc+1, width=w_units, height=28)
                     Y_Reng=Yloc
