@@ -54,8 +54,7 @@ function check_failure {
 }
 
 # *** Not Tested! ***
-if [ "$SETUP_ENVIRONMENT" = true ]
-then
+if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install HomeBrew (only if you don't have it)
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 	check_failure "Failed to install homebrew"
@@ -75,18 +74,19 @@ then
 	eval "$(pyenv init -)"
 
 	# Install Python with pyenv and set it as the default Python
+	pyenv uninstall -f ${PYTHON_VERSION}
 	# https://github.com/pyenv/pyenv/issues/94
 	PATH="/usr/local/opt/tcl-tk/bin:$PATH" \
 		LDFLAGS="-L/usr/local/opt/tcl-tk/lib" \
 		CPPFLAGS="-I/usr/local/opt/tcl-tk/include" \
 		PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig" \
 		PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-		pyenv install ${PYENV_PYTHON_VERSION}
-	check_failure "Failed to install Python ${PYENV_PYTHON_VERSION}"
+		pyenv install ${PYTHON_VERSION}
+	check_failure "Failed to install Python ${PYTHON_VERSION}"
 
 	# Select Python to use
-	pyenv local ${PYENV_PYTHON_VERSION} && pyenv rehash
-	check_failure "Failed to setup Python ${PYENV_PYTHON_VERSION}"
+	pyenv local ${PYTHON_VERSION} && pyenv rehash
+	check_failure "Failed to setup Python ${PYTHON_VERSION}"
 fi
 
 echo "Validate environment..."
@@ -167,16 +167,14 @@ echo "Clean up build artifacts..."
 rm -rf build
 
 # Remove virtual environment
-if [ "$KEEP_VENV" = false ]
-then
+if [ "$KEEP_VENV" = false ]; then
 	echo "Remove Python virtual environment..."
 	deactivate
 	rm -rf "${VENV_DIR}"
 fi
 
 # Buid a new disk image
-if [ "$MAKE_DISK" = true ]
-then
+if [ "$MAKE_DISK" = true ]; then
 	echo "Build macOS Disk Image..."
 	VOLNAME=K40-Whisperer-${VERSION}
 	rm ${VOLNAME}.dmg
