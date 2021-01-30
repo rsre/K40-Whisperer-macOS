@@ -553,16 +553,16 @@ class Application(Frame):
             self.CC_Button = Button(self.master,image=self.CC_image, command=self.Move_CC)
             
         except:
-            self.Right_Button   = Button(self.master,text=">",          command=self.Move_Right)
-            self.Left_Button    = Button(self.master,text="<",          command=self.Move_Left)
-            self.Up_Button      = Button(self.master,text="^",          command=self.Move_Up)
-            self.Down_Button    = Button(self.master,text="v",          command=self.Move_Down)
+            self.Right_Button   = Button(self.master,text="→",          command=self.Move_Right)
+            self.Left_Button    = Button(self.master,text="←",          command=self.Move_Left)
+            self.Up_Button      = Button(self.master,text="↑",          command=self.Move_Up)
+            self.Down_Button    = Button(self.master,text="↓",          command=self.Move_Down)
 
-            self.UL_Button = Button(self.master,text=" ", command=self.Move_UL)
-            self.UR_Button = Button(self.master,text=" ", command=self.Move_UR)
-            self.LR_Button = Button(self.master,text=" ", command=self.Move_LR)
-            self.LL_Button = Button(self.master,text=" ", command=self.Move_LL)
-            self.CC_Button = Button(self.master,text=" ", command=self.Move_CC)
+            self.UL_Button = Button(self.master,text="┏", command=self.Move_UL)
+            self.UR_Button = Button(self.master,text="┓", command=self.Move_UR)
+            self.LR_Button = Button(self.master,text="┛", command=self.Move_LR)
+            self.LL_Button = Button(self.master,text="┗", command=self.Move_LL)
+            self.CC_Button = Button(self.master,text="⊞", command=self.Move_CC)
 
         self.Label_Step   = Label(self.master,text="Jog Step", anchor=CENTER )
         self.Label_Step_u = Label(self.master,textvariable=self.units, anchor=W)
