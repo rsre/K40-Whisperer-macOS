@@ -72,6 +72,9 @@ then
 	PYTHON=$(command -v python)
 fi
 
+# Upgrade pip version
+${PYTHON} -m pip install --upgrade pip
+
 PIP=$(command -v pip3)
 if [ -z "${PIP}" ]
 then
