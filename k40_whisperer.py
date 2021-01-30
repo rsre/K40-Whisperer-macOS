@@ -5750,13 +5750,11 @@ app.master.geometry("800x560")
 try:
     try:
         import tkFont
-        default_font = tkFont.nametofont("TkDefaultFont")
+        default_font = tkFont.nametofont("systemSystemFont")
     except:
         import tkinter.font
-        default_font = tkinter.font.nametofont("TkDefaultFont")
+        default_font = tkinter.font.nametofont("systemSystemFont")
 
-    default_font.configure(size=12)
-    default_font.configure(family='San Francisco')
     #print(default_font.cget("size"))
     #print(default_font.cget("family"))
 except:
