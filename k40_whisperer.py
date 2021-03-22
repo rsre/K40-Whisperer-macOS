@@ -44,6 +44,7 @@ import traceback
 import struct
 
 DEBUG = False
+
 if DEBUG:
     import inspect
     
@@ -123,6 +124,7 @@ class Application(Frame):
         self.y = -1
         self.createWidgets()
         self.micro = False
+        
 
     def resetPath(self):
         self.RengData  = ECoord()
@@ -190,6 +192,7 @@ class Application(Frame):
         self.master.bind('<Alt-Control-6>'    , self.Move_Arb_Right)
         self.master.bind('<Alt-Control-8>'    , self.Move_Arb_Up)
         self.master.bind('<Alt-Control-Key-2>', self.Move_Arb_Down)
+
 
         self.master.bind('<Alt-Left>' , self.Move_Arb_Left)
         self.master.bind('<Alt-Right>', self.Move_Arb_Right)
@@ -729,7 +732,6 @@ class Application(Frame):
 
         top_View = Menu(self.menuBar, tearoff=0)
         top_View.add("command", label = "Refresh", command = self.menu_View_Refresh, accelerator="F5")
-
         top_View.add_separator()
         top_View.add_checkbutton(label = "Show Raster Image"  ,  variable=self.include_Reng ,command= self.menu_View_Refresh)
         if DEBUG:
@@ -2035,7 +2037,6 @@ class Application(Frame):
             self.aspect_ratio =  float(self.wim-1) / float(self.him-1)
             #self.make_raster_coords()
         self.refreshTime()
-
         margin=0.0625 # A bit of margin to prevent the warningwindow for designs that are close to being within the bounds
         if self.Design_bounds[0] > self.VengData.bounds[0]+margin or\
            self.Design_bounds[0] > self.VcutData.bounds[0]+margin or\
@@ -3846,7 +3847,7 @@ class Application(Frame):
                                   U_display))
 
         self.statusbar.configure( bg = 'white' )
-
+        
     def menu_Inside_First_Callback(self, varName, index, mode):
         if self.GcodeData.ecoords != []:
             if self.VcutData.sorted == True:
@@ -3886,7 +3887,6 @@ class Application(Frame):
         tkinter.messagebox.showinfo("About K40 Whisperer",about)
 
     def menu_Help_About(self):
-        
         application="K40 Whisperer"
         about = "%s Version %s\n\n" %(application,version)
         about = about + "By Scorch.\n"
@@ -5000,7 +5000,6 @@ class Application(Frame):
         xd_entry_L=xd_label_L+w_label+10
         xd_units_L=xd_entry_L+w_entry+5
 
-
         D_Yloc=D_Yloc+D_dY
         self.Label_Rstep   = Label(raster_settings,text="Scanline Step", anchor=CENTER )
         self.Label_Rstep.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
@@ -5724,7 +5723,7 @@ class pxpiDialog(tkSimpleDialog.Dialog):
         viewbox = [self.minx_pixels, self.miny_pixels, width/25.4*pxpi, height/25.4*pxpi]
         self.result = pxpi,viewbox
         return 
-            
+        
 ################################################################################
 #                          Startup Application                                 #
 ################################################################################
@@ -5735,7 +5734,6 @@ app.master.title(title_text)
 app.master.iconname("K40")
 app.master.minsize(800,560)
 app.master.geometry("800x560")
-
 try:
     try:
         import tkFont
@@ -5787,7 +5785,6 @@ except:
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)
 
-
 opts, args = None, None
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hpd",["help", "pi", "debug"])
@@ -5808,7 +5805,6 @@ for option, value in opts:
         app.master.geometry("480x320")
     elif option in ('-d','--debug'):
         DEBUG=True
-
 
 if DEBUG:
     import inspect
