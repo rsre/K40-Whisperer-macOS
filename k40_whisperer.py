@@ -2,7 +2,7 @@
 """
     K40 Whisperer
 
-    Copyright (C) <2017-2020>  <Scorch>
+    Copyright (C) <2017-2021>  <Scorch>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.56'
+version = '0.57'
 title_text = app_name+" V"+version
 
 import sys
@@ -33,6 +33,7 @@ from g_code_library import G_Code_Rip
 from interpolate import interpolate
 from ecoords import ECoord
 from convex_hull import hull2D
+from embedded_images import K40_Whisperer_Images
 
 import inkex
 import simplestyle
@@ -109,16 +110,6 @@ except:
 
 QUIET = False
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
-
 ################################################################################
 class Application(Frame):
     def __init__(self, master):
@@ -166,27 +157,27 @@ class Application(Frame):
         self.master.bind('<Home>', self.Home)
         
 
-        self.master.bind('<Control-Left>'  , self.Move_Left)
-        self.master.bind('<Control-Right>' , self.Move_Right)
-        self.master.bind('<Control-Up>'    , self.Move_Up)
-        self.master.bind('<Control-Down>'  , self.Move_Down)
+        self.master.bind('<Command-Left>'  , self.Move_Left)
+        self.master.bind('<Command-Right>' , self.Move_Right)
+        self.master.bind('<Command-Up>'    , self.Move_Up)
+        self.master.bind('<Command-Down>'  , self.Move_Down)
         
-        self.master.bind('<Control-Home>'  , self.Move_UL)
-        self.master.bind('<Control-Prior>' , self.Move_UR)
-        self.master.bind('<Control-Next>'  , self.Move_LR)
-        self.master.bind('<Control-End>'   , self.Move_LL)
-        self.master.bind('<Control-Clear>' , self.Move_CC)
+        self.master.bind('<Command-Home>'  , self.Move_UL)
+        self.master.bind('<Command-Prior>' , self.Move_UR)
+        self.master.bind('<Command-Next>'  , self.Move_LR)
+        self.master.bind('<Command-End>'   , self.Move_LL)
+        self.master.bind('<Command-Clear>' , self.Move_CC)
 
-        self.master.bind('<Control-Key-4>' , self.Move_Left)
-        self.master.bind('<Control-6>'     , self.Move_Right)
-        self.master.bind('<Control-8>'     , self.Move_Up)
-        self.master.bind('<Control-Key-2>' , self.Move_Down)
+        self.master.bind('<Command-4>' , self.Move_Left)
+        self.master.bind('<Command-6>'     , self.Move_Right)
+        self.master.bind('<Command-8>'     , self.Move_Up)
+        self.master.bind('<Command-2>' , self.Move_Down)
         
-        self.master.bind('<Control-7>'     , self.Move_UL)
-        self.master.bind('<Control-9>'     , self.Move_UR)
-        self.master.bind('<Control-Key-3>' , self.Move_LR)
-        self.master.bind('<Control-Key-1>' , self.Move_LL)
-        self.master.bind('<Control-Key-5>' , self.Move_CC)
+        self.master.bind('<Command-7>'     , self.Move_UL)
+        self.master.bind('<Command-9>'     , self.Move_UR)
+        self.master.bind('<Command-3>' , self.Move_LR)
+        self.master.bind('<Command-1>' , self.Move_LL)
+        self.master.bind('<Command-5>' , self.Move_CC)
 
         #####
 
@@ -529,23 +520,23 @@ class Application(Frame):
         self.UnLock_Button     = Button(self.master,text="Unlock Rail",     command=self.Unlock)
         self.Stop_Button       = Button(self.master,text="Pause / Stop",      command=self.Stop)
 
-        try:
-            self.left_image  = self.Imaging_Free(Image.open(resource_path("left.png")),bg=None)
-            self.right_image = self.Imaging_Free(Image.open(resource_path("right.png")),bg=None)
-            self.up_image    = self.Imaging_Free(Image.open(resource_path("up.png")),bg=None)
-            self.down_image  = self.Imaging_Free(Image.open(resource_path("down.png")),bg=None)
+        try:            
+            self.left_image  = PhotoImage(data=K40_Whisperer_Images.left_B64,  format='gif')
+            self.right_image = PhotoImage(data=K40_Whisperer_Images.right_B64, format='gif')
+            self.up_image    = PhotoImage(data=K40_Whisperer_Images.up_B64,    format='gif')
+            self.down_image  = PhotoImage(data=K40_Whisperer_Images.down_B64,  format='gif')
             
             self.Right_Button   = Button(self.master,image=self.right_image, command=self.Move_Right)
             self.Left_Button    = Button(self.master,image=self.left_image,  command=self.Move_Left)
             self.Up_Button      = Button(self.master,image=self.up_image,    command=self.Move_Up)
             self.Down_Button    = Button(self.master,image=self.down_image,  command=self.Move_Down)
 
-            self.UL_image  = self.Imaging_Free(Image.open(resource_path("UL.png")),bg=None)
-            self.UR_image  = self.Imaging_Free(Image.open(resource_path("UR.png")),bg=None)
-            self.LR_image  = self.Imaging_Free(Image.open(resource_path("LR.png")),bg=None)
-            self.LL_image  = self.Imaging_Free(Image.open(resource_path("LL.png")),bg=None)
-            self.CC_image  = self.Imaging_Free(Image.open(resource_path("CC.png")),bg=None)
-            
+            self.UL_image  = PhotoImage(data=K40_Whisperer_Images.UL_B64, format='gif')
+            self.UR_image  = PhotoImage(data=K40_Whisperer_Images.UR_B64, format='gif')
+            self.LR_image  = PhotoImage(data=K40_Whisperer_Images.LR_B64, format='gif')
+            self.LL_image  = PhotoImage(data=K40_Whisperer_Images.LL_B64, format='gif')
+            self.CC_image  = PhotoImage(data=K40_Whisperer_Images.CC_B64, format='gif')
+
             self.UL_Button = Button(self.master,image=self.UL_image, command=self.Move_UL)
             self.UR_Button = Button(self.master,image=self.UR_image, command=self.Move_UR)
             self.LR_Button = Button(self.master,image=self.LR_image, command=self.Move_LR)
@@ -2307,11 +2298,6 @@ class Application(Frame):
         return_value =  StringVar()
         return_value.set("none")
 
-        try:
-            error_report.iconbitmap(bitmap="@emblem64")
-        except:
-            debug_message(traceback.format_exc())
-            pass
 
         def Close_Click(event):
             return_value.set("close")
@@ -3056,7 +3042,8 @@ class Application(Frame):
         if self.post_exec.get():
             cmd = [self.batch_path.get()]
             from subprocess import Popen, PIPE
-            proc = Popen(cmd, shell=True, stdin=None, stdout=PIPE, stderr=PIPE)
+            startupinfo=None
+            proc = Popen(cmd, shell=False, stdout=PIPE, stderr=PIPE, stdin=PIPE, startupinfo=startupinfo)
             stdout,stderr = proc.communicate()
 
         if self.post_disp.get() or stderr != '':
@@ -3406,7 +3393,8 @@ class Application(Frame):
             starty = ymax
 
             if self.HomeUR.get():
-                FlipXoffset = abs(xmax-xmin)
+                Xscale = float(self.LaserXscale.get())
+                FlipXoffset = Xscale*abs(xmax-xmin)
                 if self.rotate.get():
                     startx = -xmin
             else:
@@ -3899,7 +3887,8 @@ class Application(Frame):
 
     def menu_Help_About(self):
         
-        about = "K40 Whisperer Version %s\n\n" %(version)
+        application="K40 Whisperer"
+        about = "%s Version %s\n\n" %(application,version)
         about = about + "By Scorch.\n"
         about = about + "\163\143\157\162\143\150\100\163\143\157\162"
         about = about + "\143\150\167\157\162\153\163\056\143\157\155\n"
@@ -3909,7 +3898,7 @@ class Application(Frame):
         except:
             python_version = ""
         about = about + "Python "+python_version+" (%d bit)" %(struct.calcsize("P") * 8)
-        message_box("About K40 Whisperer",about)
+        message_box("About %s" %(application),about)
 
     def menu_Help_Web(self):
         webbrowser.open_new(r"https://www.scorchworks.com/K40whisperer/k40whisperer.html")
@@ -5760,21 +5749,54 @@ try:
 except:
     debug_message("Font Set Failed.")
 
+# Not needed for macOS
+################################## Set Icon  ########################################
+# Icon_Set=False
+
+# try:
+#     debug_message("Icon set %s" %(sys.argv[0]))
+#     root.iconbitmap(default="emblem")
+#     debug_message("Icon set worked %s" %(sys.argv[0]))
+#     Icon_Set=True
+# except:
+#     debug_message(traceback.format_exc())
+#     Icon_Set=False
+        
+# if not Icon_Set:
+#     try:
+#         scorch_ico_B64=b'R0lGODlhEAAQAIYAAA\
+#         AAABAQEBYWFhcXFxsbGyUlJSYmJikpKSwsLC4uLi8vLzExMTMzMzc3Nzg4ODk5OTs7Oz4+PkJCQkRERE\
+#         VFRUtLS0xMTE5OTlNTU1dXV1xcXGBgYGVlZWhoaGtra3FxcXR0dHh4eICAgISEhI+Pj5mZmZ2dnaKioq\
+#         Ojo62tra6urrS0tLi4uLm5ub29vcLCwsbGxsjIyMzMzM/Pz9PT09XV1dbW1tjY2Nzc3OHh4eLi4uXl5e\
+#         fn5+jo6Ovr6+/v7/Hx8fLy8vT09PX19fn5+fv7+/z8/P7+/v///wAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEKAEkALAAAAAAQABAAQAj/AJMIFBhBQYAACRIkWbgwAA\
+#         4kEFEECACAxBAkGH8ESEKgBZIiAIQECBAjAA8kNwIkScKgQhAkRggAIJACCZIaJxgk2clgAY4OAAoEAO\
+#         ABCIIDSZIwkIHEBw0YFAAA6IGDCBIkLAhMyICka9cAKZCIRTLEBIMkaA0MSNGjSBEVIgpESEK3LgMCI1\
+#         aAWCFDA4EDSQInwaDACBEAImLwCAFARw4HFJJcgGADyZEAL3YQcMGBBpIjHx4EeIGkRoMFJgakWADABx\
+#         IkPwIgcIGkdm0AMJDo1g3jQBIBRZAINyKAwxEkyHEUSMIcwYYbEgwYmQGgyI8SD5Jo327hgIIAAQ5cBs\
+#         CQpHySgAA7'
+#         icon_im =PhotoImage(data=scorch_ico_B64, format='gif')
+#         root.call('wm', 'iconphoto', root._w, '-default', icon_im)
+#     except:
+#         pass
+#####################################################################################
+
+
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)
-debug_message("Debuging is turned on.")
 
 
 opts, args = None, None
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "hp",["help", "pi"])
+    opts, args = getopt.getopt(sys.argv[1:], "hpd",["help", "pi", "debug"])
 except:
     print('Unable interpret command line options')
     sys.exit()
 
 for option, value in opts:
     if option in ('-h','--help'):
-        pass
         print(' ')
         print('Usage: python k40_whisperer.py [-h -p]')
         print('-h    : print this help (also --help)')
@@ -5784,6 +5806,12 @@ for option, value in opts:
         print("pi mode")
         app.master.minsize(480,320)
         app.master.geometry("480x320")
+    elif option in ('-d','--debug'):
+        DEBUG=True
 
 
+if DEBUG:
+    import inspect
+debug_message("Debuging is turned on.")
+    
 root.mainloop()
