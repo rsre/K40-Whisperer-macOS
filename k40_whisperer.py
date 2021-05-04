@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.57'
+version = '0.58'
 title_text = app_name+" V"+version
 
 import sys
@@ -1059,8 +1059,6 @@ class Application(Frame):
         
         dx = can_dx*self.PlotScale
         dy = can_dy*self.PlotScale
-        if self.HomeUR.get():
-            dx = -dx
             
         DX =  round(dx*1000)
         DY =  round(dy*1000)
