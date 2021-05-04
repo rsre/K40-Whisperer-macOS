@@ -30,7 +30,7 @@ These dependencies are best installed with [Homebrew](https://brew.sh/) in a `Te
 
 # Install Dependencies
 brew install libusb
-brew cask install inkscape
+brew install --cask inkscape
 ```
 
 You need not read any further in this document. You should be able to run K40 Whisperer.
@@ -53,7 +53,7 @@ Set up Python 3.9.1 with HomeBrew and pyenv. Something like the following should
 
 # Install Dependencies (only if you haven't done this already)
 brew install libusb
-brew cask install inkscape
+brew install --cask inkscape
 brew install pyenv
 
 # Install Python 3.9.1 with pyenv and set it as the default Python
