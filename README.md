@@ -43,6 +43,8 @@ If you are using one of the most excellent [Homebrew](https://brew.sh/) versions
 
 NOTE: When installing Python with `pyenv`, you should use the `--enable-framework` flag so that Python can get properly bundled with the application.
 
+NOTE: When building from source on older versions of macOS, it could be, that the build fails at the packaging stage. This is because pyinstaller changed the way it handles code signing after version 4.3. To fix this, change `pyinstaller` to `pyinstaller==4.3` in the `requirements.txt` file.
+
 ### Python 3.9.1 (preferred method)
 
 Set up Python 3.9.1 with HomeBrew and pyenv. Something like the following should work
