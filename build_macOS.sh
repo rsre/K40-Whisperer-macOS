@@ -125,46 +125,22 @@ check_failure "Failed to install python requirements"
 
 echo "Build macOS Application Bundle..."
 
-# Create .spec file if it doesn't exist
-FILE=k40_whisperer.spec
-if [ -f "$FILE" ]; then
-	${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
-else 
-    echo "$FILE does not exist. Creating a basic one..."
-
-	pyi-makespec	--onefile -w \
-					--add-data right.png:. \
-					--add-data left.png:. \
-					--add-data up.png:. \
-					--add-data down.png:. \
-					--add-data UL.png:. \
-					--add-data UR.png:. \
-					--add-data LR.png:. \
-					--add-data LL.png:. \
-					--add-data CC.png:. \
-					-n 'K40 Whisperer' \
-					-i emblem.icns \
-					--osx-bundle-identifier com.scorchworks.k40_whisperer \
-					k40_whisperer.py
-	mv K40\ Whisperer.spec k40_whisperer.spec
-    ${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
-fi
-
 # Get version from main source file.
 VERSION=$(grep "^version " k40_whisperer.py | grep -Eo "[\.0-9]+")
 
-python3 -OO -m PyInstaller -y --clean k40_whisperer.spec
+python3 -OO -m nuitka --standalone --macos-create-app-bundle --follow-imports --static-libpython=no k40_whisperer.py
 check_failure "Failed to package k40_whisperer bundle"
 
-# Remove temporary binary
-rm -rf dist/k40_whisperer
-
-echo "Copy support files to dist..."
+echo "Copy files to dist..."
+mkdir dist
 cp k40_whisperer_test.svg Change_Log.txt gpl-3.0.txt README.md dist
+mv k40_whisperer.app dist
 
 # Clean up the build directory when we are done.
 echo "Clean up build artifacts..."
-rm -rf build
+rm k40_whisperer.bin
+rm -rf k40_whisperer.build
+rm -rf build_env.*
 
 # Remove virtual environment
 if [ "$KEEP_VENV" = false ]; then
