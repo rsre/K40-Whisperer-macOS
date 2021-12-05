@@ -135,6 +135,10 @@ echo "Copy files to dist..."
 mkdir dist
 cp k40_whisperer_test.svg Change_Log.txt gpl-3.0.txt README.md dist
 mv k40_whisperer.app dist
+cp Info.plist dist/k40_whisperer.app/Contents
+mkdir dist/k40_whisperer.app/Contents/Resources/
+cp emblem.icns dist/k40_whisperer.app/Contents/Resources/
+mv dist/k40_whisperer.app dist/K40\ Whisperer.app
 
 # Clean up the build directory when we are done.
 echo "Clean up build artifacts..."
