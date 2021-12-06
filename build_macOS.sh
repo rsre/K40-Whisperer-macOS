@@ -135,7 +135,7 @@ echo "Copy files to dist..."
 mkdir dist
 cp k40_whisperer_test.svg Change_Log.txt gpl-3.0.txt README.md dist
 mv k40_whisperer.app dist
-cp Info.plist dist/k40_whisperer.app/Contents
+sed -e "s/VERSION/${VERSION}/g" Info.plist > dist/k40_whisperer.app/Contents/Info.plist
 mkdir dist/k40_whisperer.app/Contents/Resources/
 cp emblem.icns dist/k40_whisperer.app/Contents/Resources/
 mv dist/k40_whisperer.app dist/K40\ Whisperer.app

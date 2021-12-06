@@ -30,8 +30,8 @@
 	<string>Yes</string>
 
 	<key>CFBundleShortVersionString</key>
-	<string>0.58</string>
+	<string>VERSION</string>
 	<key>CFBundleVersion</key>
-	<string>0.58</string>
+	<string>VERSION</string>
 </dict>
 </plist>
