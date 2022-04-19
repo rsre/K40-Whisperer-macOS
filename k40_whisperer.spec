@@ -45,8 +45,8 @@ app = BUNDLE(exe,
         'CFBundleIdentifier': 'com.scorchworks.k40_whisperer',
         'CFBundleName': 'K40 Whisperer',
         'CFBundleDisplayName': 'K40 Whisperer',
-        'NSHumanReadableCopyright': 'Copyright © 2017-2020, Scorch Works, GNU General Public License',
-        'CFBundleVersion': '0.45',
-        'CFBundleShortVersionString': '0.45'
+        'NSHumanReadableCopyright': 'Copyright © 2017-2022, Scorch Works, GNU General Public License',
+        'CFBundleVersion': '0.60',
+        'CFBundleShortVersionString': '0.60'
         }
       )
