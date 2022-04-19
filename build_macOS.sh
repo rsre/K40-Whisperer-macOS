@@ -3,7 +3,7 @@
 # This file executes the build command for the OS X Application bundle.
 # It is here because I am lazy
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.9.1
+PYTHON_VERSION=3.10.3
 
 # Call getopt to validate the provided input. 
 VENV_DIR=build_env.$$
