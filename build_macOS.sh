@@ -128,7 +128,7 @@ echo "Build macOS Application Bundle..."
 # Create .spec file if it doesn't exist
 FILE=k40_whisperer.spec
 if [ -f "$FILE" ]; then
-	${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
+	python3 -O -m PyInstaller -y --clean k40_whisperer.spec
 else 
     echo "$FILE does not exist. Creating a basic one..."
 
@@ -147,7 +147,7 @@ else
 					--osx-bundle-identifier com.scorchworks.k40_whisperer \
 					k40_whisperer.py
 	mv K40\ Whisperer.spec k40_whisperer.spec
-    ${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
+    python3 -O -m PyInstaller -y --clean k40_whisperer.spec
 fi
 
 # Get version from main source file.
