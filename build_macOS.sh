@@ -60,7 +60,7 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	check_failure "Failed to install homebrew"
 
 	# Install Dependencies
-	brew install --cask inkscape
+	brew install inkscape
 	brew install --build-from-source libusb
 	check_failure "Failed to install libusb"
 
