@@ -3,7 +3,7 @@
 # This file executes the build command for the OS X Application bundle.
 # It is here because I am lazy
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.9.1
+PYTHON_VERSION=3.10.3
 
 # Call getopt to validate the provided input. 
 VENV_DIR=build_env.$$
@@ -60,7 +60,7 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	check_failure "Failed to install homebrew"
 
 	# Install Dependencies
-	brew install --cask inkscape
+	brew install inkscape
 	brew install --build-from-source libusb
 	check_failure "Failed to install libusb"
 
@@ -128,7 +128,7 @@ echo "Build macOS Application Bundle..."
 # Create .spec file if it doesn't exist
 FILE=k40_whisperer.spec
 if [ -f "$FILE" ]; then
-	${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
+	python3 -O -m PyInstaller -y --clean k40_whisperer.spec
 else 
     echo "$FILE does not exist. Creating a basic one..."
 
@@ -147,7 +147,7 @@ else
 					--osx-bundle-identifier com.scorchworks.k40_whisperer \
 					k40_whisperer.py
 	mv K40\ Whisperer.spec k40_whisperer.spec
-    ${PYTHON} -O -m PyInstaller -y --clean k40_whisperer.spec
+    python3 -O -m PyInstaller -y --clean k40_whisperer.spec
 fi
 
 # Get version from main source file.
