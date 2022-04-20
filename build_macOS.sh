@@ -3,7 +3,7 @@
 # This file executes the build command for the OS X Application bundle.
 # It is here because I am lazy
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.9.1
+PYTHON_VERSION=3.10.3
 
 # Call getopt to validate the provided input. 
 VENV_DIR=build_env.$$
@@ -128,6 +128,7 @@ echo "Build macOS Application Bundle..."
 # Get version from main source file.
 VERSION=$(grep "^version " k40_whisperer.py | grep -Eo "[\.0-9]+")
 
+# No need to add --enable-plugin=tk-inter 
 python3 -OO -m nuitka --standalone --macos-create-app-bundle --follow-imports --static-libpython=no k40_whisperer.py
 check_failure "Failed to package k40_whisperer bundle"
 
