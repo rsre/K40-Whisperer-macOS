@@ -111,6 +111,34 @@ except:
 
 QUIET = False
 
+
+# macOS Mojave and tkinter design area is blank
+# https://stackoverflow.com/questions/52529403/button-text-of-tkinter-not-works-in-mojave]
+# Essentially the fix is to slightly resize the window after it opens.
+macOS_blank_fix_enabled = False
+
+def macOS_blank_fix(win):
+    def make_window_resizer(w):
+        def window_resizer():
+            a = w.winfo_geometry().split('+')[0]
+            (width, height) = a.split('x')
+            w.geometry('%dx%d' % (int(width)+1, int(height)+1))
+
+        return window_resizer
+
+    # The fix causes a bit of flicker on startup, so only run it for macOS >= 10.14
+    # Check for macOS >= 10.14
+    if macOS_blank_fix_enabled:
+        try:
+            import platform
+            v, _, _ = platform.mac_ver()
+            v = float('.'.join(v.split('.')[:2]))
+            if v >= 10.14:
+                win.update()
+                win.after(0, make_window_resizer(win))
+        except:
+            pass
+
 ################################################################################
 class Application(Frame):
     def __init__(self, master):
@@ -3862,6 +3890,8 @@ class Application(Frame):
 
         self.statusbar.configure( bg = 'white' )
         
+        macOS_blank_fix(root)
+        
     def menu_Inside_First_Callback(self, varName, index, mode):
         if self.GcodeData.ecoords != []:
             if self.VcutData.sorted == True:
@@ -5843,5 +5873,7 @@ for option, value in opts:
 if DEBUG:
     import inspect
 debug_message("Debuging is turned on.")
-    
+
+macOS_blank_fix_enabled = True
+macOS_blank_fix(root)
 root.mainloop()
