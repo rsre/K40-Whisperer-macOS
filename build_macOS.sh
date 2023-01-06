@@ -56,8 +56,12 @@ function check_failure {
 # *** Not Tested! ***
 if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install HomeBrew (only if you don't have it)
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-	check_failure "Failed to install homebrew"
+	which -s brew
+	if [[ $? != 0 ]] ; then
+		# Install Homebrew
+		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+		check_failure "Failed to install homebrew"
+	fi
 
 	# Install Dependencies
 	brew install inkscape
