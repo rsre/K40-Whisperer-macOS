@@ -503,9 +503,9 @@ class Application(Frame):
         self.PreviewCanvas.tag_bind('LaserTag',"<B1-Motion>"      , self.mousePan)
         self.PreviewCanvas.tag_bind('LaserTag',"<ButtonRelease-1>", self.mousePanStop)
 
-        self.PreviewCanvas.tag_bind('LaserDot',"<3>"              , self.right_mousePanStart)
-        self.PreviewCanvas.tag_bind('LaserDot',"<B3-Motion>"      , self.right_mousePan)
-        self.PreviewCanvas.tag_bind('LaserDot',"<ButtonRelease-3>", self.right_mousePanStop)
+        self.PreviewCanvas.tag_bind('LaserDot',"<2>"              , self.right_mousePanStart)
+        self.PreviewCanvas.tag_bind('LaserDot',"<B2-Motion>"      , self.right_mousePan)
+        self.PreviewCanvas.tag_bind('LaserDot',"<ButtonRelease-2>", self.right_mousePanStop)
 
         # Left Column #
         self.separator1 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
