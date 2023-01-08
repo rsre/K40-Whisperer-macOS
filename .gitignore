@@ -105,3 +105,4 @@ venv.bak/
 
 # macOS Disk Image
 .dmg
+.DS_Store
