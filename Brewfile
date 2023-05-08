@@ -1,0 +1,6 @@
+brew "pyenv"
+brew "pipenv"
+brew "tcl-tk"
+brew "python-tk"
+brew "libusb"
+cask "inkscape"
