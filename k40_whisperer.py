@@ -3937,9 +3937,9 @@ class Application(Frame):
         about = about + "By Scorch.\n"
         about = about + "\163\143\157\162\143\150\100\163\143\157\162"
         about = about + "\143\150\167\157\162\153\163\056\143\157\155\n"
-        about = about + "https://www.scorchworks.com/\n\n"
+        about = about + "https://www.scorchworks.com\n\n"
         about = about + "Packed for macOS by Ricardo Sanz\n"
-        about = about + "https://ricardosa.nz/\n\n"
+        about = about + "https://ricardosa.nz\n\n"
         about = about + "Tk version: " + tk_version + "\n\n"
         try:
             python_version = "%d.%d.%d" %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)
@@ -5839,36 +5839,6 @@ except:
 
 # Not needed for macOS
 ################################## Set Icon  ########################################
-# Icon_Set=False
-
-# try:
-#     debug_message("Icon set %s" %(sys.argv[0]))
-#     root.iconbitmap(default="emblem")
-#     debug_message("Icon set worked %s" %(sys.argv[0]))
-#     Icon_Set=True
-# except:
-#     debug_message(traceback.format_exc())
-#     Icon_Set=False
-        
-# if not Icon_Set:
-#     try:
-#         scorch_ico_B64=b'R0lGODlhEAAQAIYAAA\
-#         AAABAQEBYWFhcXFxsbGyUlJSYmJikpKSwsLC4uLi8vLzExMTMzMzc3Nzg4ODk5OTs7Oz4+PkJCQkRERE\
-#         VFRUtLS0xMTE5OTlNTU1dXV1xcXGBgYGVlZWhoaGtra3FxcXR0dHh4eICAgISEhI+Pj5mZmZ2dnaKioq\
-#         Ojo62tra6urrS0tLi4uLm5ub29vcLCwsbGxsjIyMzMzM/Pz9PT09XV1dbW1tjY2Nzc3OHh4eLi4uXl5e\
-#         fn5+jo6Ovr6+/v7/Hx8fLy8vT09PX19fn5+fv7+/z8/P7+/v///wAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEKAEkALAAAAAAQABAAQAj/AJMIFBhBQYAACRIkWbgwAA\
-#         4kEFEECACAxBAkGH8ESEKgBZIiAIQECBAjAA8kNwIkScKgQhAkRggAIJACCZIaJxgk2clgAY4OAAoEAO\
-#         ABCIIDSZIwkIHEBw0YFAAA6IGDCBIkLAhMyICka9cAKZCIRTLEBIMkaA0MSNGjSBEVIgpESEK3LgMCI1\
-#         aAWCFDA4EDSQInwaDACBEAImLwCAFARw4HFJJcgGADyZEAL3YQcMGBBpIjHx4EeIGkRoMFJgakWADABx\
-#         IkPwIgcIGkdm0AMJDo1g3jQBIBRZAINyKAwxEkyHEUSMIcwYYbEgwYmQGgyI8SD5Jo327hgIIAAQ5cBs\
-#         CQpHySgAA7'
-#         icon_im =PhotoImage(data=scorch_ico_B64, format='gif')
-#         root.call('wm', 'iconphoto', root._w, '-default', icon_im)
-#     except:
-#         pass
 #####################################################################################
 
 if LOAD_MSG != "":
