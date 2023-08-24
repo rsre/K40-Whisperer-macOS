@@ -53,7 +53,6 @@ function check_failure {
     [[ $CODE == 0 ]] || fail "$CODE" "$MESSAGE" 
 }
 
-# *** Not Tested! ***
 if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install HomeBrew (only if you don't have it)
 	which -s brew
@@ -80,6 +79,7 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install Python with pyenv and set it as the default Python
 	pyenv uninstall -f ${PYTHON_VERSION}
 	# https://github.com/pyenv/pyenv/issues/94
+	# Not needed anymore with python 3.11.4
 	# env PATH="$(brew --prefix tcl-tk)/bin:$PATH" \
 	# 	LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
 	# 	CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
