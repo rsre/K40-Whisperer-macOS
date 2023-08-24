@@ -179,10 +179,11 @@ fi
 # Buid a new disk image
 if [ "$MAKE_DISK" = true ]; then
 	echo "Build macOS Disk Image..."
-	VOLNAME="K40-Whisperer-${VERSION}.dmg"
+	VOLNAME="K40 Whisperer ${VERSION}"
+	VOLFILE="K40-Whisperer-${VERSION}.dmg"
 	# Remove the old disk image if it exists
-	[ ! -e ${VOLNAME} ] || rm ${VOLNAME}
-	hdiutil create -fs HFS+ -volname ${VOLNAME} -srcfolder ./dist ./dist/${VOLNAME}
+	[ ! -e ${VOLFILE} ] || rm ${VOLFILE}
+	hdiutil create -fs 'Case-sensitive APFS' -volname "${VOLNAME}" -srcfolder ./dist ./dist/${VOLFILE}
 	check_failure "Failed to build k40_whisperer dmg"
 fi
 
