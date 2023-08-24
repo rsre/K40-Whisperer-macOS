@@ -1,9 +1,8 @@
 #!/bin/bash
 # ---------------------------------------------------------------------
-# This file executes the build command for the OS X Application bundle.
-# It is here because I am lazy
+# This file executes the build command for the macOS Application bundle
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.10.9
+PYTHON_VERSION=3.11.4
 
 # Call getopt to validate the provided input. 
 VENV_DIR=build_env.$$
@@ -80,12 +79,12 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install Python with pyenv and set it as the default Python
 	pyenv uninstall -f ${PYTHON_VERSION}
 	# https://github.com/pyenv/pyenv/issues/94
-	PATH="/usr/local/opt/tcl-tk/bin:$PATH" \
-		LDFLAGS="-L/usr/local/opt/tcl-tk/lib" \
-		CPPFLAGS="-I/usr/local/opt/tcl-tk/include" \
-		PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig" \
-		PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-		pyenv install ${PYTHON_VERSION}
+	# env PATH="$(brew --prefix tcl-tk)/bin:$PATH" \
+	# 	LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
+	# 	CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
+	# 	PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
+	# 	PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'"
+	pyenv install ${PYTHON_VERSION}
 	check_failure "Failed to install Python ${PYTHON_VERSION}"
 
 	# Select Python to use
@@ -96,7 +95,7 @@ fi
 echo "Validate environment..."
 OS=$(uname)
 if [ "${OS}" != "Darwin" ]; then
-	fail "Um... this build script is for OSX/macOS."
+	fail "Um... this build script is for macOS."
 fi
 
 # Use the specific python version from pyenv so we don't get hung up on the
