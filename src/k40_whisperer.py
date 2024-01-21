@@ -2,7 +2,7 @@
 """
     K40 Whisperer
 
-    Copyright (C) <2017-2022>  <Scorch>
+    Copyright (C) <2017-2023>  <Scorch>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.62'
+version = '0.64'
 title_text = app_name+" V"+version
 
 import sys
@@ -185,7 +185,6 @@ class Application(Frame):
         self.master.bind('<F5>', self.KEY_F5)
         self.master.bind('<F6>', self.KEY_F6)
         self.master.bind('<Home>', self.Home)
-        
 
         self.master.bind('<Command-Left>'  , self.Move_Left)
         self.master.bind('<Command-Right>' , self.Move_Right)
@@ -234,6 +233,7 @@ class Application(Frame):
 
         #####
         self.master.bind('<Command-i>' , self.Initialize_Laser)
+        self.master.bind('<Command-f>' , self.Unfreeze_Laser)
         self.master.bind('<Command-o>' , self.menu_File_Open_Design)
         self.master.bind('<Command-l>' , self.menu_Reload_Design)
         self.master.bind('<Command-h>' , self.Home)
@@ -267,6 +267,7 @@ class Application(Frame):
         self.inside_first = BooleanVar()
         self.rotary       = BooleanVar()
         self.reduced_mem  = BooleanVar()
+        self.wait         = BooleanVar()
         
 
         self.ht_size    = StringVar()
@@ -363,6 +364,7 @@ class Application(Frame):
         self.inside_first.set(1)
         self.rotary.set(0)
         self.reduced_mem.set(0)
+        self.wait.set(1)
         
         self.ht_size.set(500)
 
@@ -789,6 +791,7 @@ class Application(Frame):
         top_Tools.add("command", label = "Trace Design Boundary", command = self.TRACE_Settings_Window, accelerator="Command-t")
         top_Tools.add_separator()
         top_Tools.add("command", label = "Initialize Laser", command = self.Initialize_Laser, accelerator="Command-i")
+        top_Tools.add("command", label = "Unfreeze Laser", command = self.Unfreeze_Laser, accelerator="Command-f")
         top_Tools.add_cascade(label="USB", menu=USBmenu)
         USBmenu.add("command", label = "Reset USB", command = self.Reset)
         USBmenu.add("command", label = "Release USB", command = self.Release_USB)
@@ -967,6 +970,7 @@ class Application(Frame):
         header.append('(k40_whisperer_set zoom2image    %s )'  %( int(self.zoom2image.get())    ))
         header.append('(k40_whisperer_set rotary        %s )'  %( int(self.rotary.get())        ))
         header.append('(k40_whisperer_set reduced_mem   %s )'  %( int(self.reduced_mem.get())   ))
+        header.append('(k40_whisperer_set wait          %s )'  %( int(self.wait.get())          ))
 
         header.append('(k40_whisperer_set trace_w_laser %s )'  %( int(self.trace_w_laser.get()) ))
 
@@ -1502,7 +1506,7 @@ class Application(Frame):
         return 0         # Value is a valid number
     def Entry_N_Timeouts_Callback(self, varName, index, mode):
         self.entry_set(self.Entry_N_Timeouts,self.Entry_N_Timeouts_Check(), new=1)
-
+    
     #############################
     def Entry_N_EGV_Passes_Check(self):
         try:
@@ -2541,6 +2545,8 @@ class Application(Frame):
                          self.rotary.set(line[line.find("rotary"):].split()[1])
                     elif "reduced_mem"  in line:
                          self.reduced_mem.set(line[line.find("reduced_mem"):].split()[1])
+                    elif "wait"  in line:
+                         self.wait.set(line[line.find("wait"):].split()[1])
 
                     elif "trace_w_laser"  in line:
                          self.trace_w_laser.set(line[line.find("trace_w_laser"):].split()[1])
@@ -2887,6 +2893,7 @@ class Application(Frame):
                     self.slow_jog(int(dxmils),int(dymils))
                 else:
                     self.k40.rapid_move(int(dxmils),int(dymils))
+
 
                 return True
             else:
@@ -3676,7 +3683,7 @@ class Application(Frame):
             self.k40.timeout       = int(float( self.t_timeout.get()  )) 
             self.k40.n_timeouts    = int(float( self.n_timeouts.get() ))
             time_start = time()
-            self.k40.send_data(data,self.update_gui,self.stop,num_passes,pre_process_CRC, wait_for_laser=True)
+            self.k40.send_data(data,self.update_gui,self.stop,num_passes,pre_process_CRC, wait_for_laser=self.wait.get())
             self.run_time = time()-time_start
             if DEBUG:
                 print(("Elapsed Time: %.6f" %(time()-time_start)))
@@ -3802,6 +3809,17 @@ class Application(Frame):
             self.statusbar.configure( bg = 'red' )
             self.k40=None
             debug_message(traceback.format_exc())
+
+    def Unfreeze_Laser(self,event=None):
+        if self.GUI_Disabled:
+            return
+        if self.k40 != None:
+            try:
+                self.k40.unfreeze()
+                self.statusMessage.set("Unfreeze Complete")
+                self.statusbar.configure( bg = 'white' )
+            except:
+                pass
             
     def Unlock(self,event=None):
         if self.GUI_Disabled:
@@ -3919,9 +3937,9 @@ class Application(Frame):
         about = about + "By Scorch.\n"
         about = about + "\163\143\157\162\143\150\100\163\143\157\162"
         about = about + "\143\150\167\157\162\153\163\056\143\157\155\n"
-        about = about + "https://www.scorchworks.com/\n\n"
+        about = about + "https://www.scorchworks.com\n\n"
         about = about + "Packed for macOS by Ricardo Sanz\n"
-        about = about + "https://ricardosa.nz/\n\n"
+        about = about + "https://ricardosa.nz\n\n"
         about = about + "Tk version: " + tk_version + "\n\n"
         try:
             python_version = "%d.%d.%d" %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)
@@ -4893,6 +4911,14 @@ class Application(Frame):
         self.Checkbutton_Reduce_Memory.place(x=xd_entry_L, y=D_Yloc, width=350, height=23)
         self.Checkbutton_Reduce_Memory.configure(variable=self.reduced_mem)
         self.reduced_mem.trace_variable("w", self.Reduced_Memory_Callback)
+
+        D_Yloc=D_Yloc+D_dY
+        self.Label_Wait = Label(gen_settings,text="Wait for Laser to Finish")
+        self.Label_Wait.place(x=xd_label_L, y=D_Yloc, width=w_label, height=21)
+        self.Checkbutton_Wait = Checkbutton(gen_settings,text="(after all data has been sent over USB)", anchor=W)
+        self.Checkbutton_Wait.place(x=xd_entry_L, y=D_Yloc, width=350, height=23)
+        self.Checkbutton_Wait.configure(variable=self.wait)
+        #self.wait.trace_variable("w", self.Wait_Callback)
         
         #D_Yloc=D_Yloc+D_dY
         #self.Label_Timeout = Label(gen_settings,text="USB Timeout")
@@ -5813,38 +5839,7 @@ except:
 
 # Not needed for macOS
 ################################## Set Icon  ########################################
-# Icon_Set=False
-
-# try:
-#     debug_message("Icon set %s" %(sys.argv[0]))
-#     root.iconbitmap(default="emblem")
-#     debug_message("Icon set worked %s" %(sys.argv[0]))
-#     Icon_Set=True
-# except:
-#     debug_message(traceback.format_exc())
-#     Icon_Set=False
-        
-# if not Icon_Set:
-#     try:
-#         scorch_ico_B64=b'R0lGODlhEAAQAIYAAA\
-#         AAABAQEBYWFhcXFxsbGyUlJSYmJikpKSwsLC4uLi8vLzExMTMzMzc3Nzg4ODk5OTs7Oz4+PkJCQkRERE\
-#         VFRUtLS0xMTE5OTlNTU1dXV1xcXGBgYGVlZWhoaGtra3FxcXR0dHh4eICAgISEhI+Pj5mZmZ2dnaKioq\
-#         Ojo62tra6urrS0tLi4uLm5ub29vcLCwsbGxsjIyMzMzM/Pz9PT09XV1dbW1tjY2Nzc3OHh4eLi4uXl5e\
-#         fn5+jo6Ovr6+/v7/Hx8fLy8vT09PX19fn5+fv7+/z8/P7+/v///wAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-#         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEKAEkALAAAAAAQABAAQAj/AJMIFBhBQYAACRIkWbgwAA\
-#         4kEFEECACAxBAkGH8ESEKgBZIiAIQECBAjAA8kNwIkScKgQhAkRggAIJACCZIaJxgk2clgAY4OAAoEAO\
-#         ABCIIDSZIwkIHEBw0YFAAA6IGDCBIkLAhMyICka9cAKZCIRTLEBIMkaA0MSNGjSBEVIgpESEK3LgMCI1\
-#         aAWCFDA4EDSQInwaDACBEAImLwCAFARw4HFJJcgGADyZEAL3YQcMGBBpIjHx4EeIGkRoMFJgakWADABx\
-#         IkPwIgcIGkdm0AMJDo1g3jQBIBRZAINyKAwxEkyHEUSMIcwYYbEgwYmQGgyI8SD5Jo327hgIIAAQ5cBs\
-#         CQpHySgAA7'
-#         icon_im =PhotoImage(data=scorch_ico_B64, format='gif')
-#         root.call('wm', 'iconphoto', root._w, '-default', icon_im)
-#     except:
-#         pass
 #####################################################################################
-
 
 if LOAD_MSG != "":
     message_box("K40 Whisperer",LOAD_MSG)

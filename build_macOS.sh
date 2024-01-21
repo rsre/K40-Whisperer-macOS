@@ -1,9 +1,9 @@
 #!/bin/bash
 # ---------------------------------------------------------------------
-# This file executes the build command for the OS X Application bundle.
-# It is here because I am lazy
+# This file executes the build command for the macOS Application bundle
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.10.9
+PYTHON_VERSION=3.11.4
+SRC_DIR=src
 
 # Call getopt to validate the provided input. 
 VENV_DIR=build_env.$$
@@ -53,7 +53,6 @@ function check_failure {
     [[ $CODE == 0 ]] || fail "$CODE" "$MESSAGE" 
 }
 
-# *** Not Tested! ***
 if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install HomeBrew (only if you don't have it)
 	which -s brew
@@ -68,6 +67,9 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	brew install --build-from-source libusb
 	check_failure "Failed to install libusb"
 
+	# Link Homebrew lib so pyusb can find libusb
+	ln -s /opt/homebrew/lib ~/lib
+
 	# Tcl/Tk
 	brew install --build-from-source tcl-tk
 	check_failure "Failed to install tcl-tk"
@@ -80,12 +82,13 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install Python with pyenv and set it as the default Python
 	pyenv uninstall -f ${PYTHON_VERSION}
 	# https://github.com/pyenv/pyenv/issues/94
-	PATH="/usr/local/opt/tcl-tk/bin:$PATH" \
-		LDFLAGS="-L/usr/local/opt/tcl-tk/lib" \
-		CPPFLAGS="-I/usr/local/opt/tcl-tk/include" \
-		PKG_CONFIG_PATH="/usr/local/opt/tcl-tk/lib/pkgconfig" \
-		PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-		pyenv install ${PYTHON_VERSION}
+	# Not needed anymore with python 3.11.4
+	# env PATH="$(brew --prefix tcl-tk)/bin:$PATH" \
+	# 	LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
+	# 	CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
+	# 	PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
+	# 	PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'"
+	pyenv install ${PYTHON_VERSION}
 	check_failure "Failed to install Python ${PYTHON_VERSION}"
 
 	# Select Python to use
@@ -96,7 +99,7 @@ fi
 echo "Validate environment..."
 OS=$(uname)
 if [ "${OS}" != "Darwin" ]; then
-	fail "Um... this build script is for OSX/macOS."
+	fail "Um... this build script is for macOS."
 fi
 
 # Use the specific python version from pyenv so we don't get hung up on the
@@ -124,17 +127,16 @@ PYTHON=
 # Install requirements
 echo "Install Dependencies..."
 python3 -m pip install --upgrade pip
-pip3 install -r requirements.txt
+pip3 install -r ${SRC_DIR}/requirements.txt
 check_failure "Failed to install python requirements"
 
 echo "Build macOS Application Bundle..."
 
 # Create .spec file if it doesn't exist
-FILE=k40_whisperer.spec
-if [ -f "$FILE" ]; then
-	python3 -O -m PyInstaller -y --clean k40_whisperer.spec
-else 
-    echo "$FILE does not exist. Creating a basic one..."
+SPEC_NAME=k40_whisperer.spec
+SPEC_FILE=${SRC_DIR}/${SPEC_NAME}
+if [ ! -f "$SPEC_FILE" ]; then
+    echo "$SPEC_FILE does not exist. Creating a basic one..."
 
 	pyi-makespec	--onefile -w \
 					--add-data right.png:. \
@@ -149,22 +151,22 @@ else
 					-n 'K40 Whisperer' \
 					-i emblem.icns \
 					--osx-bundle-identifier com.scorchworks.k40_whisperer \
+					--specpath ${SRC_DIR} \
+					--name ${SPEC_NAME}
 					k40_whisperer.py
-	mv K40\ Whisperer.spec k40_whisperer.spec
-    python3 -O -m PyInstaller -y --clean k40_whisperer.spec
 fi
 
 # Get version from main source file.
-VERSION=$(grep "^version " k40_whisperer.py | grep -Eo "[\.0-9]+")
+VERSION=$(grep "^version " ${SRC_DIR}/k40_whisperer.py | grep -Eo "[\.0-9]+")
 
-python3 -OO -m PyInstaller -y --clean k40_whisperer.spec
+python3 -OO -m PyInstaller -y --clean ${SPEC_FILE}
 check_failure "Failed to package k40_whisperer bundle"
 
 # Remove temporary binary
 rm -rf dist/k40_whisperer
 
 echo "Copy support files to dist..."
-cp k40_whisperer_test.svg Change_Log.txt gpl-3.0.txt README.md dist
+cp ${SRC_DIR}/{k40_whisperer_test.svg,Change_Log.txt,gpl-3.0.txt,README.md} dist
 
 # Clean up the build directory when we are done.
 echo "Clean up build artifacts..."
@@ -180,11 +182,12 @@ fi
 # Buid a new disk image
 if [ "$MAKE_DISK" = true ]; then
 	echo "Build macOS Disk Image..."
-	VOLNAME=K40-Whisperer-${VERSION}
-	rm ${VOLNAME}.dmg
-	hdiutil create -fs HFS+ -volname ${VOLNAME} -srcfolder ./dist ./${VOLNAME}.dmg
+	VOLNAME="K40 Whisperer ${VERSION}"
+	VOLFILE="K40-Whisperer-${VERSION}.dmg"
+	# Remove the old disk image if it exists
+	[ ! -e ${VOLFILE} ] || rm ${VOLFILE}
+	hdiutil create -fs 'Case-sensitive APFS' -volname "${VOLNAME}" -srcfolder ./dist ./dist/${VOLFILE}
 	check_failure "Failed to build k40_whisperer dmg"
-	mv ${VOLNAME}.dmg ./dist
 fi
 
 echo "Done."
