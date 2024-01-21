@@ -1,1 +1,1 @@
-pipenv run python k40_whisperer.py
+pipenv run python src/k40_whisperer.py
