@@ -67,6 +67,9 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	brew install --build-from-source libusb
 	check_failure "Failed to install libusb"
 
+	# Link Homebrew lib so pyusb can find libusb
+	ln -s /opt/homebrew/lib ~/lib
+
 	# Tcl/Tk
 	brew install --build-from-source tcl-tk
 	check_failure "Failed to install tcl-tk"
