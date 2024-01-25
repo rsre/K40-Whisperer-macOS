@@ -28,9 +28,9 @@ These dependencies are best installed with [Homebrew](https://brew.sh/) in a `Te
 # Install HomeBrew (only if you don't have it)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 
-# Install Dependencies
-brew install libusb
-brew install --cask inkscape
+# Install Dependencies from Brewfile
+cd K40-Whisperer-macOS
+brew bundle install
 ```
 
 You need not read any further in this document. You should be able to run K40 Whisperer.
@@ -46,6 +46,43 @@ NOTE: When installing Python with `pyenv`, you should use the `--enable-framewor
 NOTE: When building from source on older versions of macOS, it could be, that the build fails at the packaging stage. This is because pyinstaller changed the way it handles code signing after version 4.3. To fix this, change `pyinstaller` to `pyinstaller==4.3` in the `requirements.txt` file.
 
 ### Python 3.9.1 (preferred method)
+
+#### With Pipenv
+
+1. Install Pipenv
+
+	[Pipenv](https://pipenv.pypa.io/en/latest/) is a dependency management tool for Python that integrates with pyenv.
+
+	It can be installed with Homebrew:
+
+	https://pipenv.pypa.io/en/latest/installation.html#homebrew-installation-of-pipenv
+
+	I also set [these configuration variables](https://pipenv.pypa.io/en/latest/configuration.html), but you may not need to:
+
+	```
+	# ~/.bash_profile
+
+	export PIPENV_VENV_IN_PROJECT=1
+	export PIPENV_IGNORE_VIRTUALENVS=1
+	```
+1. Install dependencies from Pipfile
+	```
+	cd K40-Whisperer-macOS
+	pipenv install
+	```
+1. Run the startup script with the Pipenv dependencies
+	```
+	cd K40-Whisperer-macOS
+	pipenv run python src/k40_whisperer.py
+
+	# Or, a shortcut:
+	bin/run
+	```
+1. This will cause the K40-Whisperer app to run.
+
+	Note that the app is temporary when it is run this way: it will stay open only as long as the `run...` command is running.
+
+#### Without Pipenv
 
 Set up Python 3.9.1 with HomeBrew and pyenv. Something like the following should work
 
