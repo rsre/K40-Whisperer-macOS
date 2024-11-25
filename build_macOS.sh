@@ -166,7 +166,8 @@ check_failure "Failed to package k40_whisperer bundle"
 rm -rf dist/k40_whisperer
 
 echo "Copy support files to dist..."
-cp ${SRC_DIR}/{k40_whisperer_test.svg,Change_Log.txt,gpl-3.0.txt,README.md} dist
+cp ${SRC_DIR}/{k40_whisperer_test.svg,Change_Log.txt,gpl-3.0.txt} dist
+cp README.md dist
 
 # Clean up the build directory when we are done.
 echo "Clean up build artifacts..."
