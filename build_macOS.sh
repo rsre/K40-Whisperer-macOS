@@ -104,7 +104,7 @@ fi
 
 # Use the specific python version from pyenv so we don't get hung up on the
 # system python or a user's own custom environment.
-PYTHON=$(command -v python3)
+PYTHON=$(command -v python)
 PY_VER=$($PYTHON --version 2>&1 | awk '{ print $2 }')
 [[ ${PY_VER} == "${PYTHON_VERSION}" ]] || fail 1 "Packaging REQUIRES Python ${PYTHON_VERSION}. Please rerun with -s to setup build environment"
 
@@ -114,7 +114,7 @@ rm -rf ./build ./dist *.pyc ./__pycache__
 
 # Set up and activate virtual environment for dependencies
 echo "Setup Python Virtual Environment..."
-python3 -m venv "${VENV_DIR}"
+$PYTHON -m venv "${VENV_DIR}"
 check_failure "Failed to initialize python venv"
 
 source "./${VENV_DIR}/bin/activate"
@@ -126,8 +126,8 @@ PYTHON=
 
 # Install requirements
 echo "Install Dependencies..."
-python3 -m pip install --upgrade pip
-pip3 install -r ${SRC_DIR}/requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r ${SRC_DIR}/requirements.txt
 check_failure "Failed to install python requirements"
 
 echo "Build macOS Application Bundle..."
@@ -159,7 +159,7 @@ fi
 # Get version from main source file.
 VERSION=$(grep "^version " ${SRC_DIR}/k40_whisperer.py | grep -Eo "[\.0-9]+")
 
-python3 -OO -m PyInstaller -y --clean ${SPEC_FILE}
+python -OO -m PyInstaller -y --clean ${SPEC_FILE}
 check_failure "Failed to package k40_whisperer bundle"
 
 # Remove temporary binary
