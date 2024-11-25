@@ -18,7 +18,7 @@
 
 """
 app_name = "K40 Whisperer"
-version = '0.64'
+version = '0.68'
 title_text = app_name+" V"+version
 
 import sys
@@ -96,6 +96,11 @@ try:
     from PIL import _imaging
 except:
     pass #Don't worry everything will still work
+
+try:
+    Image.LANCZOS
+except:
+    Image.LANCZOS=Image.ANTIALIAS
 
 PYCLIPPER=True
 try:
@@ -3438,11 +3443,11 @@ class Application(Frame):
 
             if self.HomeUR.get():
                 Xscale = float(self.LaserXscale.get())
-                FlipXoffset = Xscale*abs(xmax-xmin)
+                FlipXoffset = Xscale*xmin + Xscale*xmax
                 if self.rotate.get():
                     startx = -xmin
             else:
-                FlipXoffset = 0
+                FlipXoffset = None
 
             if self.rotary.get():
                 Rapid_Feed = float(self.rapid_feed.get())*feed_factor
@@ -4476,11 +4481,14 @@ class Application(Frame):
         else:
             XlineShift = self.laserX
         YlineShift = self.laserY    
-
         if min((xmax-xmin),(ymax-ymin)) > 0 and self.zoom2image.get():
             self.PlotScale = max((xmax-xmin)/(cszw-buff), (ymax-ymin)/(cszh-buff))
-            x_lft =  minx / self.PlotScale - self.laserX / self.PlotScale + (cszw-(xmax-xmin)/self.PlotScale)/2
-            x_rgt =  maxx / self.PlotScale - self.laserX / self.PlotScale + (cszw-(xmax-xmin)/self.PlotScale)/2
+            if self.HomeUR.get():
+                x_rgt =  (xmax-minx) / self.PlotScale - self.laserX / self.PlotScale + (cszw-(xmax-xmin)/self.PlotScale)/2
+                x_lft =  (xmax-maxx) / self.PlotScale - self.laserX / self.PlotScale + (cszw-(xmax-xmin)/self.PlotScale)/2
+            else:
+                x_lft =  minx / self.PlotScale - self.laserX / self.PlotScale + (cszw-(xmax-xmin)/self.PlotScale)/2
+                x_rgt =  maxx / self.PlotScale - self.laserX / self.PlotScale + (cszw-(xmax-xmin)/self.PlotScale)/2
             y_bot = -miny / self.PlotScale + self.laserY / self.PlotScale + (cszh-(ymax-ymin)/self.PlotScale)/2
             y_top = -maxy / self.PlotScale + self.laserY / self.PlotScale + (cszh-(ymax-ymin)/self.PlotScale)/2
             self.segID.append( self.PreviewCanvas.create_rectangle(
@@ -4532,10 +4540,10 @@ class Application(Frame):
                             nw=int(self.SCALE*self.him)
                             
                         try:
-                            self.UI_image = ImageTk.PhotoImage(plot_im.resize((nw,nh), Image.ANTIALIAS))
+                            self.UI_image = ImageTk.PhotoImage(plot_im.resize((nw,nh), Image.LANCZOS))
                         except:
                             debug_message("Imaging_Free Used.")
-                            self.UI_image = self.Imaging_Free(plot_im.resize((nw,nh), Image.ANTIALIAS))
+                            self.UI_image = self.Imaging_Free(plot_im.resize((nw,nh), Image.LANCZOS))
                 except:
                     self.SCALE = 1
                     debug_message(traceback.format_exc())

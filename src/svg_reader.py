@@ -338,7 +338,16 @@ class SVG_READER(inkex.Effect):
                     if (self.txt2paths==False):
                         raise SVG_TEXT_EXCEPTION(text_message_warning)
                     else:
-                        raise Exception(text_message_fatal)
+                        # Check if there is actually any text
+                        text_length = 0
+                        text_length = text_length + len(self.strip_text(node.tail))
+                        text_length = text_length + len(self.strip_text(node.text))
+                        for child in node:
+                            text_length = text_length + len(self.strip_text(child.tail))
+                            text_length = text_length + len(self.strip_text(child.text))
+                        #print("text_length",text_length)
+                        if (text_length!=0):
+                            raise Exception(text_message_fatal)
 
                 if i_sw != -1:
                     declarations[i_sw] = sw_prop + ':' + "0.0"
@@ -910,7 +919,14 @@ class SVG_READER(inkex.Effect):
                 self.cut_lines.append([line[0],line[1],line[2],line[3]])
             else:
                 pass
-                
+
+    def strip_text(self,input):
+        try:
+            return input.strip()
+        except:
+            return ""
+
+
 if __name__ == '__main__':
     svg_reader =  SVG_READER()
     #svg_reader.parse("test.svg")

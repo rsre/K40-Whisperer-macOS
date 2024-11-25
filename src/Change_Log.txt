@@ -317,3 +317,16 @@ Version 0.63:
 
 Version 0.64:
 - Fixed arcs being drawn in the wrong direction when the radius value was specified as a negative number in an SVG file.
+
+Version 0.65:
+- Updated to work with latest Pillow release (changed ANTIALIAS call to LANCZOS)
+
+Version 0.66:
+- Fixed error that occurred with Inkscape 1.3 and files with empty text objects 
+
+Version 0.67:
+- Fixed DXF engraving/cutting for machines that home in upper right.
+
+Version 0.68:
+- Fixed "Zoom to Design Size" for machines that home in upper right.
+
