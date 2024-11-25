@@ -5873,6 +5873,6 @@ if DEBUG:
     import inspect
 debug_message("Debuging is turned on.")
 
-macOS_blank_fix_enabled = True
+macOS_blank_fix_enabled = False
 macOS_blank_fix(root)
 root.mainloop()
