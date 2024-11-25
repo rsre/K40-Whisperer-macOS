@@ -729,11 +729,7 @@ class Application(Frame):
         tk_version = tk_version[0:2]
         tk_version = int(tk_version)
 
-        if tk_version < 85:
-            app_menu.add("command", label = "Preferences...", command = self.GEN_Settings_Window)
-        else:
-            # Tk 8.5 and up provides the Preferences menu item
-            root.createcommand('tk::mac::ShowPreferences', self.GEN_Settings_Window)
+        root.createcommand('tk::mac::ShowPreferences', self.GEN_Settings_Window)
         ## End apple menu
 
         top_File = Menu(self.menuBar, tearoff=0)
