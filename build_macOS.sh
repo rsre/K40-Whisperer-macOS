@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------
 # This file executes the build command for the macOS Application bundle
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.11.4
+PYTHON_VERSION=3.12.7
 SRC_DIR=src
 
 # Call getopt to validate the provided input. 
@@ -81,13 +81,6 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 
 	# Install Python with pyenv and set it as the default Python
 	pyenv uninstall -f ${PYTHON_VERSION}
-	# https://github.com/pyenv/pyenv/issues/94
-	# Not needed anymore with python 3.11.4
-	# env PATH="$(brew --prefix tcl-tk)/bin:$PATH" \
-	# 	LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
-	# 	CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
-	# 	PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
-	# 	PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'"
 	pyenv install ${PYTHON_VERSION}
 	check_failure "Failed to install Python ${PYTHON_VERSION}"
 
@@ -104,7 +97,7 @@ fi
 
 # Use the specific python version from pyenv so we don't get hung up on the
 # system python or a user's own custom environment.
-PYTHON=$(command -v python3)
+PYTHON=$(command -v python)
 PY_VER=$($PYTHON --version 2>&1 | awk '{ print $2 }')
 [[ ${PY_VER} == "${PYTHON_VERSION}" ]] || fail 1 "Packaging REQUIRES Python ${PYTHON_VERSION}. Please rerun with -s to setup build environment"
 
@@ -114,7 +107,7 @@ rm -rf ./build ./dist *.pyc ./__pycache__
 
 # Set up and activate virtual environment for dependencies
 echo "Setup Python Virtual Environment..."
-python3 -m venv "${VENV_DIR}"
+$PYTHON -m venv "${VENV_DIR}"
 check_failure "Failed to initialize python venv"
 
 source "./${VENV_DIR}/bin/activate"
@@ -126,8 +119,8 @@ PYTHON=
 
 # Install requirements
 echo "Install Dependencies..."
-python3 -m pip install --upgrade pip
-pip3 install -r ${SRC_DIR}/requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r ${SRC_DIR}/requirements.txt
 check_failure "Failed to install python requirements"
 
 echo "Build macOS Application Bundle..."
@@ -159,14 +152,15 @@ fi
 # Get version from main source file.
 VERSION=$(grep "^version " ${SRC_DIR}/k40_whisperer.py | grep -Eo "[\.0-9]+")
 
-python3 -OO -m PyInstaller -y --clean ${SPEC_FILE}
+python -OO -m PyInstaller -y --clean ${SPEC_FILE}
 check_failure "Failed to package k40_whisperer bundle"
 
 # Remove temporary binary
 rm -rf dist/k40_whisperer
 
 echo "Copy support files to dist..."
-cp ${SRC_DIR}/{k40_whisperer_test.svg,Change_Log.txt,gpl-3.0.txt,README.md} dist
+cp ${SRC_DIR}/{k40_whisperer_test.svg,Change_Log.txt,gpl-3.0.txt} dist
+cp README.md dist
 
 # Clean up the build directory when we are done.
 echo "Clean up build artifacts..."
