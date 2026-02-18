@@ -1,3 +1,7 @@
+# Archived repo
+
+I no longer own a K40, so I can't test and properly mantain this build. This repository is just an archive of previous builds.
+
 # K40 Whisperer for macOS
 
 Packaging of Scorchworks K40 Whisperer as a macOS Application. In this repo you can find the necessary files to build K40 Whisperer for macOS. The files regarding Linux and Windows systems have been removed.
