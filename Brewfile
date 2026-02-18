@@ -1,5 +1,5 @@
 brew "pyenv"
 brew "tcl-tk"
 brew "python-tk"
-brew "libusb"
+brew "libusb", args: ["build-from-source"]
 cask "inkscape"
