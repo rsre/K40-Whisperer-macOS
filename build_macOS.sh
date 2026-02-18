@@ -81,13 +81,6 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 
 	# Install Python with pyenv and set it as the default Python
 	pyenv uninstall -f ${PYTHON_VERSION}
-	# https://github.com/pyenv/pyenv/issues/94
-	# Not needed anymore with python 3.11.4
-	# env PATH="$(brew --prefix tcl-tk)/bin:$PATH" \
-	# 	LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
-	# 	CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
-	# 	PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
-	# 	PYTHON_CONFIGURE_OPTS="--enable-framework --with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'"
 	pyenv install ${PYTHON_VERSION}
 	check_failure "Failed to install Python ${PYTHON_VERSION}"
 
