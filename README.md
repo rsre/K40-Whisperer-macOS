@@ -4,7 +4,7 @@ Packaging of Scorchworks K40 Whisperer as a macOS Application. In this repo you 
 
 > K40 Whisperer is an alternative to the the Laser Draw (LaserDRW) program that comes with the cheap Chinese laser cutters available on E-Bay and Amazon. K40 Whisperer reads SVG and DXF files,interprets the data and sends commands to the K40 controller to move the laser head and control the laser accordingly. K40 Whisperer does not require a USB key (dongle) to function.
 
-![K40 Whisperer running on macOS](https://github.com/rsre/K40-Whisperer-macOS/blob/master/K40-Whisperer-running-on-macOS.png "K40 Whisperer")
+![K40 Whisperer running on macOS](./K40-Whisperer-running-on-macOS.png "K40 Whisperer on macOS")
 
 The official K40 Whisperer and instructions are at Scorchworks:
 
