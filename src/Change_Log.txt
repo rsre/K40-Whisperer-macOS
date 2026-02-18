@@ -330,3 +330,11 @@ Version 0.67:
 Version 0.68:
 - Fixed "Zoom to Design Size" for machines that home in upper right.
 
+Version 0.69:
+- Added support for laser power control with LASER-M3 (M3 Nano) controller boards (needs to be properly wired to work)
+- Added support for software test pulse laser with LASER-M3 (M3 Nano) controller boards
+
+Version 0.70:
+- Fixed power control for M3 Nano under Python 3 and a couple of other Python 3 issues 
+- Incorporated new dialog for pause resume
+

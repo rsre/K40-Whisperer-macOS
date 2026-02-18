@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------
 # This file executes the build command for the macOS Application bundle
 # ---------------------------------------------------------------------
-PYTHON_VERSION=3.12.7
+PYTHON_VERSION=3.14.3
 SRC_DIR=src
 
 # Call getopt to validate the provided input. 

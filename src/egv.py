@@ -2,7 +2,7 @@
 '''
 This script reads/writes egv format
 
-Copyright (C) 2017-2022 Scorch www.scorchworks.com
+Copyright (C) 2017-2025 Scorch www.scorchworks.com
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -226,6 +226,8 @@ class egv:
 
     def make_speed(self,Feed=None,board_name="LASER-M2",Raster_step=0):
         board_code = board_name.split('-')[1]
+        if board_code=='M3':
+            board_code='M2'
         speed_text = LaserSpeed.get_code_from_speed(Feed, abs(Raster_step), board=board_code)
         
         speed=[]
