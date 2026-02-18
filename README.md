@@ -24,14 +24,13 @@ K40 Whisperer requires a few dependencies that are not installed as part of the 
 
 These dependencies are best installed with [Homebrew](https://brew.sh/) in a `Terminal` window as follows. This only needs to be done once on your system.
 
+Install HomeBrew (only if you don't have it):
 ```sh
-# Install HomeBrew (only if you don't have it)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 ```
+Install Dependencies from Brewfile:
 ```sh
-# Install Dependencies
-brew install libusb
-brew install --cask inkscape
+brew bundle install
 ```
 
 You need not read any further in this document. You should be able to run K40 Whisperer.

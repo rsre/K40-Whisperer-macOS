@@ -53,6 +53,12 @@ function check_failure {
     [[ $CODE == 0 ]] || fail "$CODE" "$MESSAGE" 
 }
 
+echo "Validate environment..."
+OS=$(uname)
+if [ "${OS}" != "Darwin" ]; then
+	fail "Um... this build script is for macOS."
+fi
+
 if [ "$SETUP_ENVIRONMENT" = true ]; then
 	# Install HomeBrew (only if you don't have it)
 	which -s brew
@@ -63,21 +69,8 @@ if [ "$SETUP_ENVIRONMENT" = true ]; then
 	fi
 
 	# Install Dependencies
-	brew install inkscape
-	brew install --build-from-source libusb
-	check_failure "Failed to install libusb"
-
-	# Link Homebrew lib so pyusb can find libusb
-	ln -s /opt/homebrew/lib ~/lib
-
-	# Tcl/Tk
-	brew install --build-from-source tcl-tk
-	check_failure "Failed to install tcl-tk"
-
-	# Install python environments...
-	brew install --build-from-source pyenv
-	check_failure "Failed to install pyenv"
-	eval "$(pyenv init -)"
+	brew bundle install
+	check_failure "Failed to install homebrew dependencies"
 
 	# Install Python with pyenv and set it as the default Python
 	pyenv uninstall -f ${PYTHON_VERSION}
